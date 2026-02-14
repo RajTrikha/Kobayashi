@@ -1,10 +1,13 @@
 "use client";
 
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
+  afterActionResponseSchema,
   evaluateEpisodeResponseSchema,
   generateEpisodeResponseSchema,
+  type AfterActionRequest,
   type EvaluateEpisodeResponse,
   type GenerateEpisodeResponse,
   type RunState,
@@ -13,6 +16,7 @@ import {
 type EpisodeBeat = GenerateEpisodeResponse["episode"]["beats"][number];
 type FeedItem = EpisodeBeat["feedItems"][number];
 type InternalMessage = EpisodeBeat["internalMessages"][number];
+type RunLogEntry = AfterActionRequest["runLog"][number];
 
 const START_REQUEST = {
   pack: "pr_meltdown",
@@ -27,6 +31,7 @@ function formatClock(totalSec: number): string {
 }
 
 export default function SimulatorPage() {
+  const router = useRouter();
   const [episode, setEpisode] = useState<GenerateEpisodeResponse | null>(null);
   const [runState, setRunState] = useState<RunState | null>(null);
   const [clockRemainingSec, setClockRemainingSec] = useState(0);
@@ -45,17 +50,22 @@ export default function SimulatorPage() {
   const [actionText, setActionText] = useState("");
   const [isStarting, setIsStarting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
   const [lastEvaluation, setLastEvaluation] = useState<EvaluateEpisodeResponse | null>(null);
+  const [runLog, setRunLog] = useState<RunLogEntry[]>([]);
 
   const startMsRef = useRef<number | null>(null);
   const triggeredBeatIdsRef = useRef<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const runLogRef = useRef<RunLogEntry[]>([]);
+  const afterActionStartedRef = useRef(false);
 
   const startAbortRef = useRef<AbortController | null>(null);
   const evaluateAbortRef = useRef<AbortController | null>(null);
   const ttsAbortRef = useRef<AbortController | null>(null);
+  const afterActionAbortRef = useRef<AbortController | null>(null);
 
   const revokeAudioUrl = useCallback((nextUrl: string | null = null) => {
     if (audioUrlRef.current) {
@@ -67,6 +77,14 @@ export default function SimulatorPage() {
   const runEnded = useMemo(() => Boolean(episode) && clockRemainingSec <= 0, [episode, clockRemainingSec]);
   const actionCharsLeft = 220 - actionText.length;
 
+  const appendRunLog = useCallback((entry: RunLogEntry) => {
+    setRunLog((previous) => {
+      const next = [...previous, entry];
+      runLogRef.current = next;
+      return next;
+    });
+  }, []);
+
   const resetRunView = useCallback(() => {
     setFeedItems([]);
     setInternalMessages([]);
@@ -75,6 +93,8 @@ export default function SimulatorPage() {
     setActionText("");
     setLastEvaluation(null);
     setPageError(null);
+    setRunLog([]);
+    setIsFinalizing(false);
 
     setCallTranscript("");
     setCallPersona("");
@@ -85,6 +105,8 @@ export default function SimulatorPage() {
     revokeAudioUrl();
 
     triggeredBeatIdsRef.current = new Set();
+    runLogRef.current = [];
+    afterActionStartedRef.current = false;
   }, [revokeAudioUrl]);
 
   const fetchCallAudio = useCallback(
@@ -141,6 +163,18 @@ export default function SimulatorPage() {
   const applyBeat = useCallback(
     (beat: EpisodeBeat) => {
       setLastBeatId(beat.id);
+      appendRunLog({
+        ts: new Date().toISOString(),
+        type: "beat",
+        message: `Applied beat ${beat.id}`,
+        payload: {
+          beatId: beat.id,
+          atSec: beat.atSec,
+          feedItemCount: beat.feedItems.length,
+          internalMessageCount: beat.internalMessages.length,
+          hasCall: Boolean(beat.call),
+        },
+      });
 
       if (beat.feedItems.length > 0) {
         setFeedItems((previous) => [...previous, ...beat.feedItems]);
@@ -154,7 +188,7 @@ export default function SimulatorPage() {
         void fetchCallAudio(beat);
       }
     },
-    [fetchCallAudio],
+    [appendRunLog, fetchCallAudio],
   );
 
   useEffect(() => {
@@ -233,6 +267,7 @@ export default function SimulatorPage() {
       startAbortRef.current?.abort();
       evaluateAbortRef.current?.abort();
       ttsAbortRef.current?.abort();
+      afterActionAbortRef.current?.abort();
       revokeAudioUrl();
     };
   }, [revokeAudioUrl]);
@@ -273,6 +308,16 @@ export default function SimulatorPage() {
       setRunState(parsed.data.runState);
       setClockRemainingSec(parsed.data.episode.initialState.timeRemainingSec);
       startMsRef.current = Date.now();
+      appendRunLog({
+        ts: new Date().toISOString(),
+        type: "system",
+        message: "Scenario started",
+        payload: {
+          runId: parsed.data.runId,
+          episodeId: parsed.data.episodeId,
+          pack: START_REQUEST.pack,
+        },
+      });
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
@@ -283,7 +328,7 @@ export default function SimulatorPage() {
     } finally {
       setIsStarting(false);
     }
-  }, [isStarting, resetRunView]);
+  }, [appendRunLog, isStarting, resetRunView]);
 
   const handlePlayAudio = useCallback(() => {
     if (!audioRef.current) {
@@ -312,6 +357,16 @@ export default function SimulatorPage() {
       if (trimmedAction.length === 0 || trimmedAction.length > 220 || runEnded) {
         return;
       }
+
+      appendRunLog({
+        ts: new Date().toISOString(),
+        type: "action",
+        message: "Action submitted",
+        payload: {
+          text: trimmedAction,
+          lastBeatId: lastBeatId ?? "none",
+        },
+      });
 
       setIsSubmitting(true);
       setPageError(null);
@@ -355,6 +410,16 @@ export default function SimulatorPage() {
           ...parsed.data.updatedState,
           timeRemainingSec: clockRemainingSec,
         });
+        appendRunLog({
+          ts: new Date().toISOString(),
+          type: "evaluation",
+          message: "Action evaluated",
+          payload: {
+            scoreDelta: parsed.data.scoreDelta,
+            coachingNote: parsed.data.coachingNote,
+            updatedState: parsed.data.updatedState,
+          },
+        });
         setActionText("");
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
@@ -365,8 +430,67 @@ export default function SimulatorPage() {
         setIsSubmitting(false);
       }
     },
-    [actionText, clockRemainingSec, episode, isSubmitting, lastBeatId, runEnded, runState],
+    [actionText, appendRunLog, clockRemainingSec, episode, isSubmitting, lastBeatId, runEnded, runState],
   );
+
+  useEffect(() => {
+    if (!episode || !runState || !runEnded || isSubmitting) {
+      return;
+    }
+    if (afterActionStartedRef.current) {
+      return;
+    }
+
+    afterActionStartedRef.current = true;
+    setIsFinalizing(true);
+    setPageError(null);
+
+    const finalState: RunState = {
+      ...runState,
+      timeRemainingSec: 0,
+    };
+
+    afterActionAbortRef.current?.abort();
+    const controller = new AbortController();
+    afterActionAbortRef.current = controller;
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/episode/after_action", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            runId: episode.runId,
+            runLog: runLogRef.current,
+            finalState,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`After-action failed (${response.status})`);
+        }
+
+        const payload = await response.json();
+        const parsed = afterActionResponseSchema.safeParse(payload);
+
+        if (!parsed.success) {
+          throw new Error("After-action response did not match expected schema.");
+        }
+
+        localStorage.setItem(`kobayashi:run:${episode.runId}`, JSON.stringify(parsed.data));
+        router.push(`/aar?runId=${encodeURIComponent(episode.runId)}`);
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+
+        afterActionStartedRef.current = false;
+        setIsFinalizing(false);
+        setPageError(error instanceof Error ? error.message : "Unable to generate after-action report.");
+      }
+    })();
+  }, [episode, isSubmitting, router, runEnded, runState]);
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
@@ -380,7 +504,7 @@ export default function SimulatorPage() {
             <button
               type="button"
               onClick={() => void handleStart()}
-              disabled={isStarting}
+              disabled={isStarting || isFinalizing}
               className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isStarting ? "Starting..." : "Start PR Meltdown"}
@@ -403,11 +527,16 @@ export default function SimulatorPage() {
             <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
               Last Beat: <span className="font-semibold">{lastBeatId ?? "none"}</span>
             </p>
+            <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
+              Run Log Events: <span className="font-semibold">{runLog.length}</span>
+            </p>
           </div>
 
           {runEnded ? (
             <p className="mt-3 rounded border border-yellow-700 bg-yellow-900/30 px-3 py-2 text-sm text-yellow-200">
-              Timer expired. Action submission is now disabled.
+              {isFinalizing
+                ? "Timer expired. Generating After-Action Report..."
+                : "Timer expired. Action submission is now disabled."}
             </p>
           ) : null}
 
@@ -470,13 +599,13 @@ export default function SimulatorPage() {
               onChange={(event) => setActionText(event.target.value.slice(0, 220))}
               placeholder="Write your next response..."
               className="h-28 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm outline-none ring-red-500/60 focus:ring-2"
-              disabled={!episode || isSubmitting || runEnded}
+              disabled={!episode || isSubmitting || isFinalizing || runEnded}
             />
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-zinc-400">{actionCharsLeft} characters left</p>
               <button
                 type="submit"
-                disabled={!episode || isSubmitting || actionText.trim().length === 0 || runEnded}
+                disabled={!episode || isSubmitting || isFinalizing || actionText.trim().length === 0 || runEnded}
                 className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? "Submitting..." : "Submit Action"}
