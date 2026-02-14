@@ -20,6 +20,19 @@ type OpsRoomControlPanelProps = {
   onEndNow: () => void;
 };
 
+function chipTone(value: number | null): string {
+  if (value === null) {
+    return "border-zinc-600 bg-zinc-800 text-zinc-300";
+  }
+  if (value >= 70) {
+    return "border-emerald-700/70 bg-emerald-950/40 text-emerald-200";
+  }
+  if (value >= 45) {
+    return "border-amber-700/70 bg-amber-950/40 text-amber-200";
+  }
+  return "border-rose-700/70 bg-rose-950/40 text-rose-200";
+}
+
 export function OpsRoomControlPanel({
   clock,
   runState,
@@ -47,27 +60,29 @@ export function OpsRoomControlPanel({
         : lastCoachingNote;
 
   return (
-    <section className="rounded border border-zinc-700 bg-zinc-900 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <section className="rounded-2xl border border-zinc-700 bg-zinc-900/95 p-5 shadow-[0_22px_50px_-30px_rgba(0,0,0,0.9)]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Kobayashi Simulator</h1>
-          <p className="text-sm text-zinc-300">PR Meltdown loop (minimal working build)</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">War Room</p>
+          <h1 className="mt-2 text-2xl font-semibold">Kobayashi Simulator</h1>
+          <p className="mt-1 text-sm text-zinc-300">Live decision loop for {scenarioName}</p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={onStart}
             disabled={isStarting || isFinalizing}
-            className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isStarting ? "Starting..." : "Start PR Meltdown"}
+            {isStarting ? "Initializing..." : "Start PR Meltdown"}
           </button>
           {isDevMode ? (
             <button
               type="button"
               onClick={onEndNow}
               disabled={!canEndNow || isFinalizing}
-              className="rounded bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               End Now (Dev)
             </button>
@@ -75,58 +90,53 @@ export function OpsRoomControlPanel({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-4">
-        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
-          Clock: <span className="font-semibold">{clock}</span>
+      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-5">
+        <p className="rounded-lg border border-cyan-700/70 bg-cyan-950/40 px-3 py-2 font-mono text-cyan-100">
+          SLA Clock: <span className="font-semibold">{clock}</span>
         </p>
-        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
+        <p className={`rounded-lg border px-3 py-2 ${chipTone(runState?.readinessScore ?? null)}`}>
           Readiness: <span className="font-semibold">{runState?.readinessScore ?? "--"}</span>
         </p>
-        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
-          Sentiment / Trust:{" "}
-          <span className="font-semibold">{runState ? `${runState.publicSentiment} / ${runState.trustScore}` : "--"}</span>
+        <p className={`rounded-lg border px-3 py-2 ${chipTone(runState?.publicSentiment ?? null)}`}>
+          Sentiment: <span className="font-semibold">{runState?.publicSentiment ?? "--"}</span>
         </p>
-        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
+        <p className={`rounded-lg border px-3 py-2 ${chipTone(runState?.trustScore ?? null)}`}>
+          Trust: <span className="font-semibold">{runState?.trustScore ?? "--"}</span>
+        </p>
+        <p className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-200">
           Last Beat: <span className="font-semibold">{lastBeatId ?? "none"}</span>
-        </p>
-        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
-          Run Log Events: <span className="font-semibold">{runLogCount}</span>
         </p>
       </div>
 
       <div className="mt-2 grid gap-2 text-sm sm:grid-cols-4">
-        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
+        <p className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-200">
           Mode: <span className="font-semibold uppercase">{mode ?? "--"}</span>
         </p>
-        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
-          Scenario: <span className="font-semibold">{scenarioName}</span>
+        <p className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-200">
+          Beats: <span className="font-semibold">{appliedBeatCount} / {totalBeatCount}</span>
         </p>
-        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
-          Beats:{" "}
-          <span className="font-semibold">
-            {appliedBeatCount} / {totalBeatCount}
-          </span>
+        <p className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-200">
+          Run Log Events: <span className="font-semibold">{runLogCount}</span>
         </p>
-        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2 sm:col-span-4">
+        <p className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-200 sm:col-span-4">
           Last Coaching Note: <span className="font-semibold">{coachingPreview}</span>
         </p>
       </div>
 
       {runEnded ? (
-        <p className="mt-3 rounded border border-yellow-700 bg-yellow-900/30 px-3 py-2 text-sm text-yellow-200">
-          {isFinalizing
-            ? "Timer expired. Generating After-Action Report..."
-            : "Timer expired. Action submission is now disabled."}
+        <p className="mt-3 rounded-lg border border-amber-700/80 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
+          {isFinalizing ? "Timer expired. Generating After-Action Report..." : "Timer expired. Action submission is disabled."}
         </p>
       ) : null}
+
       {isFinalizing && !runEnded ? (
-        <p className="mt-3 rounded border border-yellow-700 bg-yellow-900/30 px-3 py-2 text-sm text-yellow-200">
+        <p className="mt-3 rounded-lg border border-amber-700/80 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
           Ending run now. Generating After-Action Report...
         </p>
       ) : null}
 
       {pageError ? (
-        <p className="mt-3 rounded border border-red-700 bg-red-900/30 px-3 py-2 text-sm text-red-200">{pageError}</p>
+        <p className="mt-3 rounded-lg border border-rose-700 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{pageError}</p>
       ) : null}
     </section>
   );

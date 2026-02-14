@@ -546,8 +546,8 @@ export default function SimulatorPage() {
   }, [finalizeRun]);
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_15%_0%,rgba(14,116,144,0.16),transparent_40%),radial-gradient(circle_at_95%_5%,rgba(190,24,93,0.12),transparent_35%),#09090b] px-4 py-6 text-zinc-100 sm:px-6 sm:py-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
         <OpsRoomControlPanel
           clock={formatClock(clockRemainingSec)}
           runState={runState}
@@ -568,33 +568,39 @@ export default function SimulatorPage() {
           onEndNow={handleEndNow}
         />
 
-        <section className="grid gap-4 lg:grid-cols-2">
-          <OpsRoomPublicFeed feedItems={feedItems} />
+        <section className="grid gap-4 xl:grid-cols-12">
+          <div className="xl:col-span-4">
+            <OpsRoomPublicFeed feedItems={feedItems} />
+          </div>
 
-          <OpsRoomIncomingCall
-            callPersona={callPersona}
-            callTranscript={callTranscript}
-            callAudioUrl={callAudioUrl}
-            isCallRinging={isCallRinging}
-            autoPlayBlocked={autoPlayBlocked}
-            callError={callError}
-            isLoadingCallAudio={isLoadingCallAudio}
-            audioRef={audioRef}
-            onPlayAudio={handlePlayAudio}
-          />
+          <div className="xl:col-span-4">
+            <OpsRoomActionComposer
+              actionText={actionText}
+              actionCharsLeft={actionCharsLeft}
+              hasEpisode={Boolean(episode)}
+              isSubmitting={isSubmitting}
+              isFinalizing={isFinalizing}
+              runEnded={runEnded}
+              lastEvaluation={lastEvaluation}
+              onActionTextChange={setActionText}
+              onSubmit={handleActionSubmit}
+            />
+          </div>
+
+          <div className="xl:col-span-4">
+            <OpsRoomIncomingCall
+              callPersona={callPersona}
+              callTranscript={callTranscript}
+              callAudioUrl={callAudioUrl}
+              isCallRinging={isCallRinging}
+              autoPlayBlocked={autoPlayBlocked}
+              callError={callError}
+              isLoadingCallAudio={isLoadingCallAudio}
+              audioRef={audioRef}
+              onPlayAudio={handlePlayAudio}
+            />
+          </div>
         </section>
-
-        <OpsRoomActionComposer
-          actionText={actionText}
-          actionCharsLeft={actionCharsLeft}
-          hasEpisode={Boolean(episode)}
-          isSubmitting={isSubmitting}
-          isFinalizing={isFinalizing}
-          runEnded={runEnded}
-          lastEvaluation={lastEvaluation}
-          onActionTextChange={setActionText}
-          onSubmit={handleActionSubmit}
-        />
 
         <OpsRoomInternalChat internalMessages={internalMessages} />
       </div>

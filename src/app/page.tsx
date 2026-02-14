@@ -1,75 +1,121 @@
 import Link from "next/link";
 
+const spotlightScenarios = [
+  {
+    title: "PR Meltdown",
+    category: "Corporate Reputation",
+    detail: "Live now · SkyWave Air",
+    status: "Playable",
+  },
+  {
+    title: "Product Recall Spiral",
+    category: "Consumer Safety",
+    detail: "Escalating defect reports across channels",
+    status: "Coming Soon",
+  },
+  {
+    title: "Data Leak Whiplash",
+    category: "Cyber + Trust",
+    detail: "Regulatory, media, and customer pressure waves",
+    status: "Coming Soon",
+  },
+];
+
+const features = [
+  {
+    title: "Live Pressure Environment",
+    description:
+      "Feeds spike, stakeholders call, internal teams flood the war room, and your SLA clock keeps moving.",
+  },
+  {
+    title: "Real-Time Decision Scoring",
+    description:
+      "Every move is scored instantly across trust, sentiment, and readiness so tradeoffs are visible as they happen.",
+  },
+  {
+    title: "Deployment-Ready Outputs",
+    description:
+      "Each run ends with an After-Action Report plus draft comms: public statement, stakeholder email, support script, and internal memo.",
+  },
+];
+
 export default function Home() {
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-12 text-zinc-100">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <section className="rounded-xl border border-zinc-700 bg-zinc-900 p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Kobayashi Crisis Lab</p>
-          <h1 className="mt-3 text-3xl font-semibold sm:text-5xl">Generative Crisis Simulator</h1>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-300 sm:text-base">
-            Kobayashi is a real-time crisis simulator for precision under pressure and controlled chaos. Choose your
-            role, step into the war room, and face a live meltdown: public feeds spike, stakeholders call, internal
-            teams flood in, and the SLA clock starts.
-          </p>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-300 sm:text-base">
-            You make decisive moves, Kobayashi scores every choice in real time, then delivers an After-Action Report
-            plus ready-to-send comms: public statement, stakeholder email, support script, and internal memo.
-          </p>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_10%_0%,rgba(14,116,144,0.2),transparent_45%),radial-gradient(circle_at_90%_10%,rgba(153,27,27,0.2),transparent_40%),#09090b] px-4 py-8 text-zinc-100 sm:px-6 sm:py-12">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+        <section className="rounded-2xl border border-zinc-700 bg-zinc-900/90 p-6 shadow-[0_25px_60px_-30px_rgba(0,0,0,0.8)] sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="max-w-4xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Kobayashi Crisis Lab</p>
+              <h1 className="mt-3 text-3xl font-semibold leading-tight sm:text-5xl">
+                Precision under pressure. Controlled chaos. Real outcomes.
+              </h1>
+              <p className="mt-4 text-sm leading-7 text-zinc-200 sm:text-base">
+                Kobayashi is a real-time crisis simulator built for precision under pressure and controlled chaos. Pick
+                a role, step into the war room, and face a live meltdown: feeds spike, stakeholders call, internal
+                teams flood you with questions, and the SLA clock starts.
+              </p>
+              <p className="mt-3 text-sm leading-7 text-zinc-300 sm:text-base">
+                You respond with decisive actions, Kobayashi scores your choices in real time, and then produces an
+                After-Action Report plus ready-to-send comms: public statement, stakeholder email, support script, and
+                internal memo.
+              </p>
+            </div>
+
+            <div className="min-w-56 rounded-xl border border-zinc-700 bg-zinc-950/70 p-4">
+              <p className="text-xs uppercase tracking-[0.14em] text-zinc-400">Scenario Library</p>
+              <p className="mt-2 text-3xl font-semibold text-zinc-100">51+</p>
+              <p className="mt-1 text-sm text-zinc-300">PR Meltdown live now + 50 additional crisis scenarios.</p>
+            </div>
+          </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
               href="/simulator"
-              className="rounded bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500"
+              className="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500"
             >
-              Start PR Meltdown
+              Enter War Room
             </Link>
             <a
-              href="#features"
-              className="rounded border border-zinc-600 px-5 py-2.5 text-sm font-semibold text-zinc-200 transition hover:border-zinc-400"
+              href="#scenarios"
+              className="rounded-lg border border-zinc-600 px-5 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-zinc-400"
             >
-              View Simulation Features
+              Explore Scenario Packs
             </a>
           </div>
         </section>
 
-        <section id="features" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <article className="rounded-xl border border-zinc-700 bg-zinc-900 p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Public Feed</h2>
-            <p className="mt-2 text-sm text-zinc-200">Escalating media signals land in real time as beats trigger.</p>
-          </article>
-
-          <article className="rounded-xl border border-zinc-700 bg-zinc-900 p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Incoming Calls</h2>
-            <p className="mt-2 text-sm text-zinc-200">
-              Reporter call transcript and audio playback with browser-safe fallback controls.
-            </p>
-          </article>
-
-          <article className="rounded-xl border border-zinc-700 bg-zinc-900 p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Action Evaluation</h2>
-            <p className="mt-2 text-sm text-zinc-200">Each action updates trust, sentiment, and readiness with coaching.</p>
-          </article>
-
-          <article className="rounded-xl border border-zinc-700 bg-zinc-900 p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">After-Action Report</h2>
-            <p className="mt-2 text-sm text-zinc-200">Generate timeline analysis and four communication artifacts instantly.</p>
-          </article>
+        <section id="scenarios" className="grid gap-4 md:grid-cols-3">
+          {spotlightScenarios.map((scenario) => (
+            <article
+              key={scenario.title}
+              className="rounded-2xl border border-zinc-700 bg-zinc-900/90 p-5 transition hover:border-zinc-500"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs uppercase tracking-[0.12em] text-zinc-400">{scenario.category}</p>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    scenario.status === "Playable"
+                      ? "bg-emerald-900/70 text-emerald-200"
+                      : "bg-amber-900/60 text-amber-200"
+                  }`}
+                >
+                  {scenario.status}
+                </span>
+              </div>
+              <h2 className="mt-3 text-xl font-semibold">{scenario.title}</h2>
+              <p className="mt-2 text-sm text-zinc-300">{scenario.detail}</p>
+            </article>
+          ))}
         </section>
 
-        <section className="rounded-xl border border-zinc-700 bg-zinc-900 p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Scenario Pack</p>
-              <p className="mt-1 text-lg font-semibold">PR Meltdown · SkyWave Air · Head of Comms</p>
-            </div>
-            <Link
-              href="/simulator"
-              className="rounded bg-zinc-100 px-5 py-2.5 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-200"
-            >
-              Enter Simulator
-            </Link>
-          </div>
+        <section className="grid gap-4 lg:grid-cols-3">
+          {features.map((feature) => (
+            <article key={feature.title} className="rounded-2xl border border-zinc-700 bg-zinc-900/90 p-5">
+              <h3 className="text-base font-semibold">{feature.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-300">{feature.description}</p>
+            </article>
+          ))}
         </section>
       </div>
     </main>

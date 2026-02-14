@@ -37,14 +37,15 @@ export function OpsRoomActionComposer({
   onSubmit,
 }: OpsRoomActionComposerProps) {
   return (
-    <section className="rounded border border-zinc-700 bg-zinc-900 p-4">
-      <h2 className="mb-3 text-lg font-semibold">Action Composer</h2>
+    <section className="rounded-2xl border border-zinc-700 bg-zinc-900/95 p-4">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-300">Action Composer</h2>
+
       <div className="mb-3 grid gap-2 sm:grid-cols-2">
         <button
           type="button"
           onClick={() => onActionTextChange(ACTION_TEMPLATES.holdingStatement)}
           disabled={!hasEpisode || isSubmitting || isFinalizing || runEnded}
-          className="rounded border border-zinc-600 bg-zinc-800 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-cyan-700/70 bg-cyan-950/30 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Draft Holding Statement
         </button>
@@ -52,7 +53,7 @@ export function OpsRoomActionComposer({
           type="button"
           onClick={() => onActionTextChange(ACTION_TEMPLATES.dmReporter)}
           disabled={!hasEpisode || isSubmitting || isFinalizing || runEnded}
-          className="rounded border border-zinc-600 bg-zinc-800 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-sky-700/70 bg-sky-950/30 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
         >
           DM Reporter
         </button>
@@ -60,7 +61,7 @@ export function OpsRoomActionComposer({
           type="button"
           onClick={() => onActionTextChange(ACTION_TEMPLATES.internalMemo)}
           disabled={!hasEpisode || isSubmitting || isFinalizing || runEnded}
-          className="rounded border border-zinc-600 bg-zinc-800 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-emerald-700/70 bg-emerald-950/30 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Internal Memo
         </button>
@@ -68,25 +69,26 @@ export function OpsRoomActionComposer({
           type="button"
           onClick={() => onActionTextChange(ACTION_TEMPLATES.escalate)}
           disabled={!hasEpisode || isSubmitting || isFinalizing || runEnded}
-          className="rounded border border-amber-700/70 bg-amber-950/30 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-amber-700/70 bg-amber-950/30 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Escalate
         </button>
       </div>
+
       <form onSubmit={onSubmit} className="space-y-3">
         <textarea
           value={actionText}
           onChange={(event) => onActionTextChange(event.target.value.slice(0, 220))}
           placeholder="Write your next response..."
-          className="h-28 w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm outline-none ring-red-500/60 focus:ring-2"
+          className="h-28 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm outline-none ring-cyan-500/60 focus:ring-2"
           disabled={!hasEpisode || isSubmitting || isFinalizing || runEnded}
         />
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-zinc-400">{actionCharsLeft} characters left</p>
+          <p className={`text-xs ${actionCharsLeft < 40 ? "text-amber-300" : "text-zinc-400"}`}>{actionCharsLeft} characters left</p>
           <button
             type="submit"
             disabled={!hasEpisode || isSubmitting || isFinalizing || actionText.trim().length === 0 || runEnded}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? "Submitting..." : "Submit Action"}
           </button>
@@ -94,20 +96,20 @@ export function OpsRoomActionComposer({
       </form>
 
       {lastEvaluation ? (
-        <div className="mt-4 rounded border border-zinc-700 bg-zinc-800 p-3 text-sm">
+        <div className="mt-4 rounded-lg border border-zinc-700 bg-zinc-800/80 p-3 text-sm">
           <p>
-            <span className="font-semibold">Score Delta:</span> {lastEvaluation.scoreDelta}
+            <span className="font-semibold text-cyan-300">Score Delta:</span> {lastEvaluation.scoreDelta}
           </p>
           <p className="mt-1">
-            <span className="font-semibold">State Delta:</span> sentiment {lastEvaluation.stateDelta.publicSentiment}, trust{" "}
+            <span className="font-semibold text-cyan-300">State Delta:</span> sentiment {lastEvaluation.stateDelta.publicSentiment}, trust{" "}
             {lastEvaluation.stateDelta.trustScore}
           </p>
           <p className="mt-1">
-            <span className="font-semibold">Coach:</span> {lastEvaluation.coachingNote}
+            <span className="font-semibold text-cyan-300">Coach:</span> {lastEvaluation.coachingNote}
           </p>
           {lastEvaluation.suggestedNextAction ? (
             <p className="mt-1">
-              <span className="font-semibold">Suggested Next:</span> {lastEvaluation.suggestedNextAction}
+              <span className="font-semibold text-cyan-300">Suggested Next:</span> {lastEvaluation.suggestedNextAction}
             </p>
           ) : null}
         </div>
