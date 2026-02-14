@@ -23,6 +23,7 @@ const START_REQUEST = {
   role: "Head of Comms",
   org: "SkyWave Air",
 } as const;
+const IS_DEV_MODE = process.env.NODE_ENV !== "production";
 
 function formatClock(totalSec: number): string {
   const minutes = Math.floor(totalSec / 60);
@@ -433,14 +434,13 @@ export default function SimulatorPage() {
     [actionText, appendRunLog, clockRemainingSec, episode, isSubmitting, lastBeatId, runEnded, runState],
   );
 
-  useEffect(() => {
-    if (!episode || !runState || !runEnded || isSubmitting) {
+  const finalizeRun = useCallback(async () => {
+    if (!episode || !runState) {
       return;
     }
     if (afterActionStartedRef.current) {
       return;
     }
-
     afterActionStartedRef.current = true;
     setIsFinalizing(true);
     setPageError(null);
@@ -454,43 +454,55 @@ export default function SimulatorPage() {
     const controller = new AbortController();
     afterActionAbortRef.current = controller;
 
-    void (async () => {
-      try {
-        const response = await fetch("/api/episode/after_action", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            runId: episode.runId,
-            runLog: runLogRef.current,
-            finalState,
-          }),
-          signal: controller.signal,
-        });
+    try {
+      const response = await fetch("/api/episode/after_action", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          runId: episode.runId,
+          runLog: runLogRef.current,
+          finalState,
+        }),
+        signal: controller.signal,
+      });
 
-        if (!response.ok) {
-          throw new Error(`After-action failed (${response.status})`);
-        }
+      if (!response.ok) {
+        throw new Error(`After-action failed (${response.status})`);
+      }
 
-        const payload = await response.json();
-        const parsed = afterActionResponseSchema.safeParse(payload);
+      const payload = await response.json();
+      const parsed = afterActionResponseSchema.safeParse(payload);
 
-        if (!parsed.success) {
-          throw new Error("After-action response did not match expected schema.");
-        }
+      if (!parsed.success) {
+        throw new Error("After-action response did not match expected schema.");
+      }
 
-        localStorage.setItem(`kobayashi:run:${episode.runId}`, JSON.stringify(parsed.data));
-        router.push(`/aar?runId=${encodeURIComponent(episode.runId)}`);
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") {
-          return;
-        }
-
+      localStorage.setItem(`kobayashi:run:${episode.runId}`, JSON.stringify(parsed.data));
+      router.push(`/aar?runId=${encodeURIComponent(episode.runId)}`);
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
         afterActionStartedRef.current = false;
         setIsFinalizing(false);
-        setPageError(error instanceof Error ? error.message : "Unable to generate after-action report.");
+        return;
       }
-    })();
-  }, [episode, isSubmitting, router, runEnded, runState]);
+
+      afterActionStartedRef.current = false;
+      setIsFinalizing(false);
+      setPageError(error instanceof Error ? error.message : "Unable to generate after-action report.");
+    }
+  }, [episode, router, runState]);
+
+  useEffect(() => {
+    if (!runEnded || isSubmitting) {
+      return;
+    }
+
+    void finalizeRun();
+  }, [finalizeRun, isSubmitting, runEnded]);
+
+  const handleEndNow = useCallback(() => {
+    void finalizeRun();
+  }, [finalizeRun]);
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
@@ -501,14 +513,26 @@ export default function SimulatorPage() {
               <h1 className="text-xl font-semibold">Kobayashi Simulator</h1>
               <p className="text-sm text-zinc-300">PR Meltdown loop (minimal working build)</p>
             </div>
-            <button
-              type="button"
-              onClick={() => void handleStart()}
-              disabled={isStarting || isFinalizing}
-              className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isStarting ? "Starting..." : "Start PR Meltdown"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void handleStart()}
+                disabled={isStarting || isFinalizing}
+                className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isStarting ? "Starting..." : "Start PR Meltdown"}
+              </button>
+              {IS_DEV_MODE ? (
+                <button
+                  type="button"
+                  onClick={handleEndNow}
+                  disabled={!episode || !runState || isFinalizing}
+                  className="rounded bg-amber-500 px-4 py-2 text-sm font-semibold text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  End Now (Dev)
+                </button>
+              ) : null}
+            </div>
           </div>
 
           <div className="mt-4 grid gap-2 text-sm sm:grid-cols-4">
@@ -537,6 +561,11 @@ export default function SimulatorPage() {
               {isFinalizing
                 ? "Timer expired. Generating After-Action Report..."
                 : "Timer expired. Action submission is now disabled."}
+            </p>
+          ) : null}
+          {isFinalizing && !runEnded ? (
+            <p className="mt-3 rounded border border-yellow-700 bg-yellow-900/30 px-3 py-2 text-sm text-yellow-200">
+              Ending run now. Generating After-Action Report...
             </p>
           ) : null}
 
