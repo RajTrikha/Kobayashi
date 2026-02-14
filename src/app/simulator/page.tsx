@@ -84,6 +84,13 @@ export default function SimulatorPage() {
 
   const runEnded = useMemo(() => Boolean(episode) && clockRemainingSec <= 0, [episode, clockRemainingSec]);
   const actionCharsLeft = 220 - actionText.length;
+  const appliedBeatCount = useMemo(
+    () => runLog.reduce((count, entry) => (entry.type === "beat" ? count + 1 : count), 0),
+    [runLog],
+  );
+  const totalBeatCount = episode?.episode.beats.length ?? 0;
+  const hudMode = lastEvaluation?.mode ?? episode?.mode ?? null;
+  const lastCoachingNote = lastEvaluation?.coachingNote ?? null;
 
   const appendRunLog = useCallback((entry: RunLogEntry) => {
     setRunLog((previous) => {
@@ -519,6 +526,11 @@ export default function SimulatorPage() {
           runState={runState}
           lastBeatId={lastBeatId}
           runLogCount={runLog.length}
+          mode={hudMode}
+          scenarioName="PR Meltdown"
+          appliedBeatCount={appliedBeatCount}
+          totalBeatCount={totalBeatCount}
+          lastCoachingNote={lastCoachingNote}
           runEnded={runEnded}
           isStarting={isStarting}
           isFinalizing={isFinalizing}

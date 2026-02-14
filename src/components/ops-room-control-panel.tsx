@@ -5,6 +5,11 @@ type OpsRoomControlPanelProps = {
   runState: RunState | null;
   lastBeatId: string | null;
   runLogCount: number;
+  mode: "mock" | "live" | null;
+  scenarioName: string;
+  appliedBeatCount: number;
+  totalBeatCount: number;
+  lastCoachingNote: string | null;
   runEnded: boolean;
   isStarting: boolean;
   isFinalizing: boolean;
@@ -20,6 +25,11 @@ export function OpsRoomControlPanel({
   runState,
   lastBeatId,
   runLogCount,
+  mode,
+  scenarioName,
+  appliedBeatCount,
+  totalBeatCount,
+  lastCoachingNote,
   runEnded,
   isStarting,
   isFinalizing,
@@ -29,6 +39,13 @@ export function OpsRoomControlPanel({
   onStart,
   onEndNow,
 }: OpsRoomControlPanelProps) {
+  const coachingPreview =
+    !lastCoachingNote || lastCoachingNote.trim().length === 0
+      ? "No coaching note yet."
+      : lastCoachingNote.length > 80
+        ? `${lastCoachingNote.slice(0, 77)}...`
+        : lastCoachingNote;
+
   return (
     <section className="rounded border border-zinc-700 bg-zinc-900 p-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -74,6 +91,24 @@ export function OpsRoomControlPanel({
         </p>
         <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
           Run Log Events: <span className="font-semibold">{runLogCount}</span>
+        </p>
+      </div>
+
+      <div className="mt-2 grid gap-2 text-sm sm:grid-cols-4">
+        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
+          Mode: <span className="font-semibold uppercase">{mode ?? "--"}</span>
+        </p>
+        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
+          Scenario: <span className="font-semibold">{scenarioName}</span>
+        </p>
+        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2">
+          Beats:{" "}
+          <span className="font-semibold">
+            {appliedBeatCount} / {totalBeatCount}
+          </span>
+        </p>
+        <p className="rounded border border-zinc-700 bg-zinc-800 px-3 py-2 sm:col-span-4">
+          Last Coaching Note: <span className="font-semibold">{coachingPreview}</span>
         </p>
       </div>
 
