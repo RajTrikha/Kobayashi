@@ -1,27 +1,39 @@
-# Kobayashi: Generative Crisis Simulator (Baseline Milestone)
+# Kobayashi: Generative Crisis Simulator
 
-This baseline milestone includes:
-- Next.js (App Router) scaffold with TypeScript + Tailwind
-- Shared Zod schemas for all simulator API contracts
-- Stubbed mock API routes for episode generation, action evaluation, after-action reporting, and TTS
+Kobayashi is a hackathon-grade, production-shaped web app for crisis communications training.
+This repo currently ships a polished vertical slice for the **PR Meltdown** scenario pack.
 
-This milestone intentionally does **not** include simulator UI implementation, beat scheduling, persistence, tests, or provider abstractions yet.
+## What Works Now
 
-## Requirements
-- Node.js 20+
-- npm 10+
+- Landing page at `/`
+- Full simulator at `/simulator`
+- After-action report view at `/aar?runId=...`
+- Runtime-validated APIs:
+  - `POST /api/episode/generate`
+  - `POST /api/episode/evaluate`
+  - `POST /api/episode/after_action`
+  - `POST /api/tts`
+- Deterministic mock fallback mode for demos
+- Optional live mode via Anthropic + ElevenLabs when keys are set
+
+## Stack
+
+- Next.js App Router + TypeScript
+- Tailwind CSS
+- Zod runtime validation
+- Native `fetch` provider calls (Anthropic and ElevenLabs)
 
 ## Setup
+
 ```bash
 npm install
 cp .env.example .env.local
 npm run dev
 ```
 
-Server starts at [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000).
 
 ## Environment Variables
-Use only Anthropic/ElevenLabs keys:
 
 ```bash
 ANTHROPIC_API_KEY=
@@ -30,18 +42,59 @@ ELEVENLABS_API_KEY=
 ELEVENLABS_VOICE_ID=voice_id_placeholder
 ```
 
-## API Endpoints (Mock Stubs)
-- `POST /api/episode/generate`
-- `POST /api/episode/evaluate`
-- `POST /api/episode/after_action`
-- `POST /api/tts`
+## Live vs Mock Mode
 
-All JSON endpoints enforce runtime validation using Zod and return `400` on invalid payloads.
-`/api/tts` returns deterministic mock `audio/mpeg` bytes.
+- **Live mode** is used automatically when provider keys are configured.
+- **Mock mode** is used automatically when keys are missing, provider calls fail, or provider output fails schema validation.
+- Responses include `mode: "mock" | "live"` for episode and evaluation payloads.
 
-## Quick Smoke Test
+## Simulator Loop
+
+1. Start run (`/api/episode/generate`).
+2. Timer starts (8 minutes).
+3. Timed beats append public feed + internal chat events.
+4. Reporter call triggers transcript + TTS audio flow.
+5. Player submits actions (`/api/episode/evaluate`).
+6. State and readiness update each action.
+7. On timeout (or dev **End Now**), AAR is generated (`/api/episode/after_action`).
+8. AAR is stored in localStorage and shown on `/aar?runId=...`.
+
+## API Smoke Tests
+
+Generate:
 ```bash
-curl -s http://localhost:3000/api/episode/generate \
+curl -sS -X POST http://localhost:3000/api/episode/generate \
   -H 'content-type: application/json' \
-  -d '{"pack":"pr_meltdown","role":"Head of Comms","org":"SkyWave Air"}' | jq
+  -d '{"pack":"pr_meltdown","role":"Head of Comms","org":"SkyWave Air"}'
 ```
+
+Evaluate:
+```bash
+curl -sS -X POST http://localhost:3000/api/episode/evaluate \
+  -H 'content-type: application/json' \
+  -d '{"runId":"run_demo","episodeId":"ep_demo","runState":{"publicSentiment":46,"trustScore":51,"legalRisk":"medium","newsVelocity":"rising","timeRemainingSec":420,"readinessScore":38},"action":"We hear customer frustration, legal is reviewing facts, and support hotline opens now.","context":{"note":"lastBeatId:beat_001"}}'
+```
+
+After action:
+```bash
+curl -sS -X POST http://localhost:3000/api/episode/after_action \
+  -H 'content-type: application/json' \
+  -d '{"runId":"run_demo","runLog":[{"ts":"2026-02-14T18:00:00.000Z","type":"action","message":"Submitted holding statement"}],"finalState":{"publicSentiment":53,"trustScore":57,"legalRisk":"medium","newsVelocity":"steady","timeRemainingSec":0,"readinessScore":49}}'
+```
+
+TTS:
+```bash
+curl -sS -X POST http://localhost:3000/api/tts \
+  -H 'content-type: application/json' \
+  -d '{"text":"Reporter requesting comment on the incident.","persona":"Riley Trent"}' \
+  --output /tmp/kobayashi_call.mp3
+```
+
+## Demo Script (Judges)
+
+1. Open `/` and click **Start PR Meltdown**.
+2. Wait for first feed/internal beats to populate.
+3. Trigger reporter call, show ringing pre-roll and call playback.
+4. Submit 1-2 actions and narrate readiness + score deltas.
+5. Use **End Now (Dev)** or let timer expire.
+6. Show `/aar` with narrative + artifacts and copy buttons.

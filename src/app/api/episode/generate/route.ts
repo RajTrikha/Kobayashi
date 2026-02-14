@@ -1,5 +1,7 @@
 import { parseRequest, validationResponse } from "@/lib/api";
+import { isAnthropicConfigured } from "@/lib/config";
 import { createMockEpisode } from "@/lib/mockData";
+import { generateEpisodeLive } from "@/lib/providers/anthropic";
 import {
   generateEpisodeRequestSchema,
   generateEpisodeResponseSchema,
@@ -12,7 +14,8 @@ export async function POST(request: Request) {
     return parsed.response;
   }
 
-  const responsePayload = createMockEpisode(parsed.data);
+  const livePayload = isAnthropicConfigured() ? await generateEpisodeLive(parsed.data) : null;
+  const responsePayload = livePayload ?? createMockEpisode(parsed.data);
 
   return validationResponse(generateEpisodeResponseSchema, responsePayload);
 }

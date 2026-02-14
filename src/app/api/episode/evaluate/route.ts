@@ -1,5 +1,7 @@
 import { parseRequest, validationResponse } from "@/lib/api";
+import { isAnthropicConfigured } from "@/lib/config";
 import { evaluateMockAction } from "@/lib/mockData";
+import { evaluateEpisodeLive } from "@/lib/providers/anthropic";
 import {
   evaluateEpisodeRequestSchema,
   evaluateEpisodeResponseSchema,
@@ -12,7 +14,8 @@ export async function POST(request: Request) {
     return parsed.response;
   }
 
-  const responsePayload = evaluateMockAction(parsed.data);
+  const livePayload = isAnthropicConfigured() ? await evaluateEpisodeLive(parsed.data) : null;
+  const responsePayload = livePayload ?? evaluateMockAction(parsed.data);
 
   return validationResponse(evaluateEpisodeResponseSchema, responsePayload);
 }

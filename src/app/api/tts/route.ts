@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { parseRequest } from "@/lib/api";
+import { getRuntimeEnv, isElevenLabsConfigured } from "@/lib/config";
 import { createMockTtsAudio } from "@/lib/mockData";
+import { synthesizeWithElevenLabs } from "@/lib/providers/elevenlabs";
 import { ttsRequestSchema } from "@/lib/schemas";
 
 export async function POST(request: Request) {
@@ -11,14 +13,25 @@ export async function POST(request: Request) {
     return parsed.response;
   }
 
-  const voiceId = parsed.data.voiceId ?? process.env.ELEVENLABS_VOICE_ID ?? "mock_voice";
+  const env = getRuntimeEnv();
+  const voiceId = parsed.data.voiceId ?? env.ELEVENLABS_VOICE_ID ?? "mock_voice";
   const persona = parsed.data.persona ?? "Reporter";
 
-  const audioBuffer = createMockTtsAudio({
-    text: parsed.data.text,
-    voiceId,
-    persona,
-  });
+  const liveAudioBuffer = isElevenLabsConfigured(env, voiceId)
+    ? await synthesizeWithElevenLabs({
+        text: parsed.data.text,
+        voiceId,
+      })
+    : null;
+
+  const mode = liveAudioBuffer ? "live" : "mock";
+  const audioBuffer =
+    liveAudioBuffer ??
+    createMockTtsAudio({
+      text: parsed.data.text,
+      voiceId,
+      persona,
+    });
 
   return new NextResponse(audioBuffer, {
     status: 200,
@@ -26,7 +39,7 @@ export async function POST(request: Request) {
       "Content-Type": "audio/mpeg",
       "Content-Length": `${audioBuffer.byteLength}`,
       "Cache-Control": "no-store",
-      "X-Kobayashi-TTS-Mode": "mock",
+      "X-Kobayashi-TTS-Mode": mode,
     },
   });
 }

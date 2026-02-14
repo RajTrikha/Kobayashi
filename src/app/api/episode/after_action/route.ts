@@ -1,5 +1,7 @@
 import { parseRequest, validationResponse } from "@/lib/api";
+import { isAnthropicConfigured } from "@/lib/config";
 import { createMockAfterAction } from "@/lib/mockData";
+import { createAfterActionLive } from "@/lib/providers/anthropic";
 import {
   afterActionRequestSchema,
   afterActionResponseSchema,
@@ -12,7 +14,8 @@ export async function POST(request: Request) {
     return parsed.response;
   }
 
-  const responsePayload = createMockAfterAction(parsed.data);
+  const livePayload = isAnthropicConfigured() ? await createAfterActionLive(parsed.data) : null;
+  const responsePayload = livePayload ?? createMockAfterAction(parsed.data);
 
   return validationResponse(afterActionResponseSchema, responsePayload);
 }
