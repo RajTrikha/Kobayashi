@@ -93,6 +93,20 @@ export function OpsRoomIncomingCall({
         </span>
       </div>
 
+      <div className="mt-2 flex h-8 items-end gap-1 rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1">
+        {Array.from({ length: 18 }).map((_, index) => (
+          <span
+            key={index}
+            className={`w-1 rounded-sm ${isCallRinging || callAudioUrl ? "animate-pulse bg-cyan-400/80" : "bg-zinc-700"}`}
+            style={{
+              height: `${20 + ((index * 13) % 65)}%`,
+              animationDelay: `${index * 60}ms`,
+              animationDuration: "1100ms",
+            }}
+          />
+        ))}
+      </div>
+
       {panelTab === "audio" ? (
         <audio ref={audioRef} className="mt-3 w-full" controls src={callAudioUrl ?? undefined} preload="auto" />
       ) : null}

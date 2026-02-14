@@ -59,6 +59,7 @@ export function OpsRoomControlPanel({
   const timeProgress = Math.round((Math.max(0, timeRemainingSec) / Math.max(1, totalTimeSec)) * 100);
   const beatProgress =
     totalBeatCount > 0 ? Math.round((Math.max(0, appliedBeatCount) / Math.max(1, totalBeatCount)) * 100) : 0;
+  const readinessValue = runState?.readinessScore ?? 0;
   const coachingPreview =
     !lastCoachingNote || lastCoachingNote.trim().length === 0
       ? "No coaching note yet."
@@ -94,6 +95,16 @@ export function OpsRoomControlPanel({
               End Now (Dev)
             </button>
           ) : null}
+          <div className="rounded-full border border-zinc-700 bg-zinc-900 p-2">
+            <div
+              className="grid h-14 w-14 place-items-center rounded-full border border-zinc-700 bg-zinc-950 text-xs font-semibold text-zinc-200"
+              style={{
+                backgroundImage: `conic-gradient(${readinessValue >= 65 ? "#22d3ee" : readinessValue >= 40 ? "#f59e0b" : "#f43f5e"} ${readinessValue}%, #27272a ${readinessValue}% 100%)`,
+              }}
+            >
+              <span className="rounded-full bg-zinc-950 px-2 py-1">{readinessValue}</span>
+            </div>
+          </div>
         </div>
       </div>
 

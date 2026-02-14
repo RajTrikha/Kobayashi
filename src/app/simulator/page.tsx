@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import {
   OpsRoomActionComposer,
+  OpsRoomActivityLog,
   OpsRoomControlPanel,
   OpsRoomIncomingCall,
   OpsRoomInternalChat,
@@ -63,6 +64,7 @@ export default function SimulatorPage() {
   const [pageError, setPageError] = useState<string | null>(null);
   const [lastEvaluation, setLastEvaluation] = useState<EvaluateEpisodeResponse | null>(null);
   const [runLog, setRunLog] = useState<RunLogEntry[]>([]);
+  const [viewMode, setViewMode] = useState<"board" | "focus_feed" | "focus_actions">("board");
 
   const startMsRef = useRef<number | null>(null);
   const triggeredBeatIdsRef = useRef<Set<string>>(new Set());
@@ -595,12 +597,63 @@ export default function SimulatorPage() {
           onEndNow={handleEndNow}
         />
 
+        <section className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/80 p-2">
+          <span className="px-2 text-xs uppercase tracking-[0.14em] text-zinc-400">View Mode</span>
+          <button
+            type="button"
+            onClick={() => setViewMode("board")}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+              viewMode === "board" ? "bg-cyan-700 text-cyan-50" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+            }`}
+          >
+            Board
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("focus_feed")}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+              viewMode === "focus_feed"
+                ? "bg-cyan-700 text-cyan-50"
+                : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+            }`}
+          >
+            Feed Focus
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("focus_actions")}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+              viewMode === "focus_actions"
+                ? "bg-cyan-700 text-cyan-50"
+                : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+            }`}
+          >
+            Action Focus
+          </button>
+        </section>
+
         <section className="grid gap-4 xl:grid-cols-12">
-          <div className="xl:col-span-4">
+          <div
+            className={
+              viewMode === "focus_feed"
+                ? "xl:col-span-6"
+                : viewMode === "focus_actions"
+                  ? "xl:col-span-3"
+                  : "xl:col-span-4"
+            }
+          >
             <OpsRoomPublicFeed feedItems={feedItems} />
           </div>
 
-          <div className="xl:col-span-4">
+          <div
+            className={
+              viewMode === "focus_actions"
+                ? "xl:col-span-6"
+                : viewMode === "focus_feed"
+                  ? "xl:col-span-3"
+                  : "xl:col-span-4"
+            }
+          >
             <OpsRoomActionComposer
               actionText={actionText}
               actionCharsLeft={actionCharsLeft}
@@ -614,7 +667,7 @@ export default function SimulatorPage() {
             />
           </div>
 
-          <div className="xl:col-span-4">
+          <div className={viewMode === "board" ? "xl:col-span-4" : "xl:col-span-3"}>
             <OpsRoomIncomingCall
               callPersona={callPersona}
               callTranscript={callTranscript}
@@ -629,7 +682,14 @@ export default function SimulatorPage() {
           </div>
         </section>
 
-        <OpsRoomInternalChat internalMessages={internalMessages} />
+        <section className="grid gap-4 xl:grid-cols-12">
+          <div className="xl:col-span-7">
+            <OpsRoomInternalChat internalMessages={internalMessages} />
+          </div>
+          <div className="xl:col-span-5">
+            <OpsRoomActivityLog runLog={runLog} />
+          </div>
+        </section>
       </div>
     </main>
   );
