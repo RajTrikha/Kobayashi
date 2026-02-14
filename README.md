@@ -1,7 +1,8 @@
 # Kobayashi: Generative Crisis Simulator
 
-Kobayashi is a hackathon-grade, production-shaped web app for crisis communications training.
-This repo currently ships a polished vertical slice for the **PR Meltdown** scenario pack.
+Kobayashi is a real-time crisis simulator for precision under pressure and controlled chaos.
+Choose your role, step into the war room, and face a live meltdown: public feeds spike, stakeholders call, internal teams flood in, and the SLA clock starts.
+You make decisive moves, Kobayashi scores every choice in real time, then delivers an After-Action Report plus ready-to-send comms: public statement, stakeholder email, support script, and internal memo.
 
 ## What Works Now
 

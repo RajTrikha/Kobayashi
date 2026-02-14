@@ -8,8 +8,13 @@ export default function Home() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Kobayashi Crisis Lab</p>
           <h1 className="mt-3 text-3xl font-semibold sm:text-5xl">Generative Crisis Simulator</h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-300 sm:text-base">
-            A judge-ready comms simulator for high-pressure incidents. Run the PR Meltdown pack, respond to real-time
-            media pressure, and generate an after-action report with deployable communication artifacts.
+            Kobayashi is a real-time crisis simulator for precision under pressure and controlled chaos. Choose your
+            role, step into the war room, and face a live meltdown: public feeds spike, stakeholders call, internal
+            teams flood in, and the SLA clock starts.
+          </p>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-300 sm:text-base">
+            You make decisive moves, Kobayashi scores every choice in real time, then delivers an After-Action Report
+            plus ready-to-send comms: public statement, stakeholder email, support script, and internal memo.
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
