@@ -4,6 +4,7 @@ type OpsRoomIncomingCallProps = {
   callPersona: string;
   callTranscript: string;
   callAudioUrl: string | null;
+  isCallRinging: boolean;
   autoPlayBlocked: boolean;
   callError: string | null;
   isLoadingCallAudio: boolean;
@@ -15,6 +16,7 @@ export function OpsRoomIncomingCall({
   callPersona,
   callTranscript,
   callAudioUrl,
+  isCallRinging,
   autoPlayBlocked,
   callError,
   isLoadingCallAudio,
@@ -35,13 +37,19 @@ export function OpsRoomIncomingCall({
         <button
           type="button"
           onClick={onPlayAudio}
-          disabled={!callAudioUrl}
+          disabled={!callAudioUrl || isCallRinging}
           className="rounded bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
         >
           PLAY
         </button>
         <span className="text-xs text-zinc-400">
-          {isLoadingCallAudio ? "Loading audio..." : autoPlayBlocked ? "Autoplay blocked. Use PLAY." : ""}
+          {isCallRinging
+            ? "Ringing..."
+            : isLoadingCallAudio
+              ? "Loading audio..."
+              : autoPlayBlocked
+                ? "Autoplay blocked. Use PLAY."
+                : ""}
         </span>
       </div>
 

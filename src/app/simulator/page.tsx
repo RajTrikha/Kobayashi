@@ -51,6 +51,7 @@ export default function SimulatorPage() {
   const [callTranscript, setCallTranscript] = useState("");
   const [callPersona, setCallPersona] = useState("");
   const [callAudioUrl, setCallAudioUrl] = useState<string | null>(null);
+  const [isCallRinging, setIsCallRinging] = useState(false);
   const [autoPlayBlocked, setAutoPlayBlocked] = useState(false);
   const [callError, setCallError] = useState<string | null>(null);
   const [isLoadingCallAudio, setIsLoadingCallAudio] = useState(false);
@@ -67,6 +68,7 @@ export default function SimulatorPage() {
   const triggeredBeatIdsRef = useRef<Set<string>>(new Set());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const ringingTimeoutRef = useRef<number | null>(null);
   const runLogRef = useRef<RunLogEntry[]>([]);
   const afterActionStartedRef = useRef(false);
 
@@ -114,10 +116,15 @@ export default function SimulatorPage() {
     setCallTranscript("");
     setCallPersona("");
     setCallAudioUrl(null);
+    setIsCallRinging(false);
     setAutoPlayBlocked(false);
     setCallError(null);
     setIsLoadingCallAudio(false);
     revokeAudioUrl();
+    if (ringingTimeoutRef.current) {
+      window.clearTimeout(ringingTimeoutRef.current);
+      ringingTimeoutRef.current = null;
+    }
 
     triggeredBeatIdsRef.current = new Set();
     runLogRef.current = [];
@@ -132,16 +139,26 @@ export default function SimulatorPage() {
 
       setCallTranscript(beat.call.transcript);
       setCallPersona(beat.call.persona);
+      setCallAudioUrl(null);
+      setIsCallRinging(true);
       setAutoPlayBlocked(false);
       setCallError(null);
       setIsLoadingCallAudio(true);
+      revokeAudioUrl();
 
       ttsAbortRef.current?.abort();
       const controller = new AbortController();
       ttsAbortRef.current = controller;
 
+      const ringDelay = new Promise<void>((resolve) => {
+        ringingTimeoutRef.current = window.setTimeout(() => {
+          ringingTimeoutRef.current = null;
+          resolve();
+        }, 1500);
+      });
+
       try {
-        const response = await fetch("/api/tts", {
+        const audioBlobPromise = fetch("/api/tts", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -149,13 +166,14 @@ export default function SimulatorPage() {
             persona: beat.call.persona,
           }),
           signal: controller.signal,
+        }).then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`TTS request failed (${response.status})`);
+          }
+          return response.blob();
         });
 
-        if (!response.ok) {
-          throw new Error(`TTS request failed (${response.status})`);
-        }
-
-        const audioBlob = await response.blob();
+        const [audioBlob] = await Promise.all([audioBlobPromise, ringDelay]);
         if (audioBlob.size === 0) {
           throw new Error("TTS returned empty audio.");
         }
@@ -169,6 +187,11 @@ export default function SimulatorPage() {
         }
         setCallError(error instanceof Error ? error.message : "Unable to generate call audio.");
       } finally {
+        if (ringingTimeoutRef.current) {
+          window.clearTimeout(ringingTimeoutRef.current);
+          ringingTimeoutRef.current = null;
+        }
+        setIsCallRinging(false);
         setIsLoadingCallAudio(false);
       }
     },
@@ -283,6 +306,10 @@ export default function SimulatorPage() {
       evaluateAbortRef.current?.abort();
       ttsAbortRef.current?.abort();
       afterActionAbortRef.current?.abort();
+      if (ringingTimeoutRef.current) {
+        window.clearTimeout(ringingTimeoutRef.current);
+        ringingTimeoutRef.current = null;
+      }
       revokeAudioUrl();
     };
   }, [revokeAudioUrl]);
@@ -548,6 +575,7 @@ export default function SimulatorPage() {
             callPersona={callPersona}
             callTranscript={callTranscript}
             callAudioUrl={callAudioUrl}
+            isCallRinging={isCallRinging}
             autoPlayBlocked={autoPlayBlocked}
             callError={callError}
             isLoadingCallAudio={isLoadingCallAudio}
