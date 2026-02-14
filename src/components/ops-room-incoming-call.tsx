@@ -25,10 +25,11 @@ export function OpsRoomIncomingCall({
 }: OpsRoomIncomingCallProps) {
   return (
     <div className="rounded border border-zinc-700 bg-zinc-900 p-4">
-      <h2 className="mb-3 text-lg font-semibold">Incoming Reporter Call</h2>
+      <h2 className="mb-3 text-lg font-semibold">Incoming media call</h2>
       <p className="text-sm text-zinc-300">
         Persona: <span className="font-semibold text-zinc-100">{callPersona || "No active caller"}</span>
       </p>
+      <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">Reporter transcript</p>
       <p className="mt-2 rounded border border-zinc-700 bg-zinc-800 p-3 text-sm text-zinc-100">
         {callTranscript || "Transcript appears when a beat with a reporter call triggers."}
       </p>
@@ -40,15 +41,15 @@ export function OpsRoomIncomingCall({
           disabled={!callAudioUrl || isCallRinging}
           className="rounded bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          PLAY
+          Answer call
         </button>
         <span className="text-xs text-zinc-400">
           {isCallRinging
-            ? "Ringing..."
+            ? "Ringing…"
             : isLoadingCallAudio
               ? "Loading audio..."
               : autoPlayBlocked
-                ? "Autoplay blocked. Use PLAY."
+                ? "Autoplay blocked by your browser. Click “Answer call” to play."
                 : ""}
         </span>
       </div>
