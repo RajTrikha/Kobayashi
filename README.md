@@ -1,5 +1,5 @@
 # Kobayashi: Generative Crisis Simulator
-
+Youtube Link: https://www.youtube.com/watch?v=jtCwqP1CO3Y
 Kobayashi is a real-time crisis simulator for precision under pressure and controlled chaos.
 Choose your role, step into the war room, and face a live meltdown: public feeds spike, stakeholders call, internal teams flood in, and the SLA clock starts.
 You make decisive moves, Kobayashi scores every choice in real time, then delivers an After-Action Report plus ready-to-send comms: public statement, stakeholder email, support script, and internal memo.
