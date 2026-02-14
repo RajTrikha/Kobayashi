@@ -21,13 +21,9 @@ type LoadResult =
   | { state: "invalid" }
   | { state: "ready"; report: AfterActionResponse };
 
-function loadReport(runId: string | null): LoadResult {
+function loadReportFromStorage(runId: string | null): LoadResult {
   if (!runId) {
     return { state: "missing" };
-  }
-
-  if (typeof window === "undefined") {
-    return { state: "idle" };
   }
 
   const storageKey = `kobayashi:run:${runId}`;
@@ -53,10 +49,14 @@ function loadReport(runId: string | null): LoadResult {
 export default function AfterActionPage() {
   const searchParams = useSearchParams();
   const runId = searchParams.get("runId");
-  const result = loadReport(runId);
+  const [result, setResult] = useState<LoadResult>({ state: "idle" });
   const [copiedArtifact, setCopiedArtifact] = useState<ArtifactKey | null>(null);
   const [copyError, setCopyError] = useState<string | null>(null);
   const copiedTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setResult(loadReportFromStorage(runId));
+  }, [runId]);
 
   useEffect(() => {
     return () => {
