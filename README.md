@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kobayashi: Generative Crisis Simulator (Baseline Milestone)
 
-## Getting Started
+This baseline milestone includes:
+- Next.js (App Router) scaffold with TypeScript + Tailwind
+- Shared Zod schemas for all simulator API contracts
+- Stubbed mock API routes for episode generation, action evaluation, after-action reporting, and TTS
 
-First, run the development server:
+This milestone intentionally does **not** include simulator UI implementation, beat scheduling, persistence, tests, or provider abstractions yet.
 
+## Requirements
+- Node.js 20+
+- npm 10+
+
+## Setup
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Server starts at [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
+Use only Anthropic/ElevenLabs keys:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=claude-3-5-haiku-latest
+ELEVENLABS_API_KEY=
+ELEVENLABS_VOICE_ID=voice_id_placeholder
+```
 
-## Learn More
+## API Endpoints (Mock Stubs)
+- `POST /api/episode/generate`
+- `POST /api/episode/evaluate`
+- `POST /api/episode/after_action`
+- `POST /api/tts`
 
-To learn more about Next.js, take a look at the following resources:
+All JSON endpoints enforce runtime validation using Zod and return `400` on invalid payloads.
+`/api/tts` returns deterministic mock `audio/mpeg` bytes.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Quick Smoke Test
+```bash
+curl -s http://localhost:3000/api/episode/generate \
+  -H 'content-type: application/json' \
+  -d '{"pack":"pr_meltdown","role":"Head of Comms","org":"SkyWave Air"}' | jq
+```
