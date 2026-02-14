@@ -93,6 +93,7 @@ export default function SimulatorPage() {
   const totalBeatCount = episode?.episode.beats.length ?? 0;
   const hudMode = lastEvaluation?.mode ?? episode?.mode ?? null;
   const lastCoachingNote = lastEvaluation?.coachingNote ?? null;
+  const totalScenarioTimeSec = episode?.episode.initialState.timeRemainingSec ?? 8 * 60;
 
   const appendRunLog = useCallback((entry: RunLogEntry) => {
     setRunLog((previous) => {
@@ -475,6 +476,30 @@ export default function SimulatorPage() {
     [actionText, appendRunLog, clockRemainingSec, episode, isSubmitting, lastBeatId, runEnded, runState],
   );
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!event.metaKey && !event.ctrlKey) {
+        return;
+      }
+      if (event.key !== "Enter") {
+        return;
+      }
+      if (!episode || !runState || isSubmitting || isFinalizing || runEnded) {
+        return;
+      }
+      if (actionText.trim().length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      const form = document.getElementById("action-composer-form") as HTMLFormElement | null;
+      form?.requestSubmit();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [actionText, episode, isFinalizing, isSubmitting, runEnded, runState]);
+
   const finalizeRun = useCallback(async () => {
     if (!episode || !runState) {
       return;
@@ -550,6 +575,8 @@ export default function SimulatorPage() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
         <OpsRoomControlPanel
           clock={formatClock(clockRemainingSec)}
+          timeRemainingSec={clockRemainingSec}
+          totalTimeSec={totalScenarioTimeSec}
           runState={runState}
           lastBeatId={lastBeatId}
           runLogCount={runLog.length}

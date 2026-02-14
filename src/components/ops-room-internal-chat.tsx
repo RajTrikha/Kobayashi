@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+
 import type { GenerateEpisodeResponse } from "@/lib/schemas";
 
 type EpisodeBeat = GenerateEpisodeResponse["episode"]["beats"][number];
@@ -29,6 +31,15 @@ function channelTheme(channel: string): string {
 }
 
 export function OpsRoomInternalChat({ internalMessages }: OpsRoomInternalChatProps) {
+  const [priorityFilter, setPriorityFilter] = useState<InternalMessage["priority"] | "all">("all");
+  const filteredMessages = useMemo(
+    () =>
+      priorityFilter === "all"
+        ? internalMessages
+        : internalMessages.filter((message) => message.priority === priorityFilter),
+    [internalMessages, priorityFilter],
+  );
+
   return (
     <section className="rounded-2xl border border-zinc-700 bg-zinc-900/95 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -38,14 +49,31 @@ export function OpsRoomInternalChat({ internalMessages }: OpsRoomInternalChatPro
         </span>
       </div>
 
+      <div className="mb-3 flex flex-wrap gap-2 text-xs">
+        {(["all", "high", "normal", "low"] as const).map((priority) => (
+          <button
+            key={priority}
+            type="button"
+            onClick={() => setPriorityFilter(priority)}
+            className={`rounded-md border px-2 py-1 uppercase tracking-wide transition ${
+              priorityFilter === priority
+                ? "border-cyan-500 bg-cyan-950/40 text-cyan-100"
+                : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-zinc-500"
+            }`}
+          >
+            {priority}
+          </button>
+        ))}
+      </div>
+
       <ul className="max-h-[22rem] space-y-2 overflow-y-auto pr-1 text-sm">
-        {internalMessages.length === 0 ? (
+        {filteredMessages.length === 0 ? (
           <li className="rounded-lg border border-dashed border-zinc-700 bg-zinc-800/50 p-3 text-zinc-400">
-            No internal chat messages yet.
+            No messages for this priority filter.
           </li>
         ) : null}
 
-        {internalMessages.map((message) => (
+        {filteredMessages.map((message) => (
           <li key={`${message.id}-${message.from}`} className="rounded-lg border border-zinc-700 bg-zinc-800/80 p-3">
             <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-zinc-300">
               <span className="font-semibold text-zinc-100">{message.from}</span>

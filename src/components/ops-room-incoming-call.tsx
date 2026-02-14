@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type { RefObject } from "react";
 
 type OpsRoomIncomingCallProps = {
@@ -23,6 +25,8 @@ export function OpsRoomIncomingCall({
   audioRef,
   onPlayAudio,
 }: OpsRoomIncomingCallProps) {
+  const [panelTab, setPanelTab] = useState<"transcript" | "audio">("transcript");
+
   return (
     <div className="rounded-2xl border border-zinc-700 bg-zinc-900/95 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -41,10 +45,33 @@ export function OpsRoomIncomingCall({
         <p className="mt-1 text-sm text-zinc-100">{callPersona || "No active caller"}</p>
       </div>
 
+      <div className="mt-3 inline-flex rounded-lg border border-zinc-700 bg-zinc-800 p-1 text-xs">
+        <button
+          type="button"
+          onClick={() => setPanelTab("transcript")}
+          className={`rounded px-2 py-1 transition ${
+            panelTab === "transcript" ? "bg-cyan-700 text-cyan-50" : "text-zinc-300 hover:bg-zinc-700"
+          }`}
+        >
+          Transcript
+        </button>
+        <button
+          type="button"
+          onClick={() => setPanelTab("audio")}
+          className={`rounded px-2 py-1 transition ${
+            panelTab === "audio" ? "bg-cyan-700 text-cyan-50" : "text-zinc-300 hover:bg-zinc-700"
+          }`}
+        >
+          Audio
+        </button>
+      </div>
+
       <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">Reporter transcript</p>
-      <p className="mt-2 rounded-lg border border-zinc-700 bg-zinc-800/70 p-3 text-sm text-zinc-100">
-        {callTranscript || "Transcript appears when a beat with a reporter call triggers."}
-      </p>
+      {panelTab === "transcript" ? (
+        <p className="mt-2 rounded-lg border border-zinc-700 bg-zinc-800/70 p-3 text-sm text-zinc-100">
+          {callTranscript || "Transcript appears when a beat with a reporter call triggers."}
+        </p>
+      ) : null}
 
       <div className="mt-3 flex items-center gap-3">
         <button
@@ -66,7 +93,9 @@ export function OpsRoomIncomingCall({
         </span>
       </div>
 
-      <audio ref={audioRef} className="mt-3 w-full" controls src={callAudioUrl ?? undefined} preload="auto" />
+      {panelTab === "audio" ? (
+        <audio ref={audioRef} className="mt-3 w-full" controls src={callAudioUrl ?? undefined} preload="auto" />
+      ) : null}
 
       {callError ? (
         <p className="mt-3 rounded-lg border border-rose-700 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{callError}</p>

@@ -75,7 +75,7 @@ export function OpsRoomActionComposer({
         </button>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-3">
+      <form id="action-composer-form" onSubmit={onSubmit} className="space-y-3">
         <textarea
           value={actionText}
           onChange={(event) => onActionTextChange(event.target.value.slice(0, 220))}
@@ -84,7 +84,9 @@ export function OpsRoomActionComposer({
           disabled={!hasEpisode || isSubmitting || isFinalizing || runEnded}
         />
         <div className="flex items-center justify-between gap-3">
-          <p className={`text-xs ${actionCharsLeft < 40 ? "text-amber-300" : "text-zinc-400"}`}>{actionCharsLeft} characters left</p>
+          <p className={`text-xs ${actionCharsLeft < 40 ? "text-amber-300" : "text-zinc-400"}`}>
+            {actionCharsLeft} characters left · Submit with Ctrl/Cmd + Enter
+          </p>
           <button
             type="submit"
             disabled={!hasEpisode || isSubmitting || isFinalizing || actionText.trim().length === 0 || runEnded}

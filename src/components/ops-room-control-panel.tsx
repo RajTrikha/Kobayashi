@@ -2,6 +2,8 @@ import type { RunState } from "@/lib/schemas";
 
 type OpsRoomControlPanelProps = {
   clock: string;
+  timeRemainingSec: number;
+  totalTimeSec: number;
   runState: RunState | null;
   lastBeatId: string | null;
   runLogCount: number;
@@ -35,6 +37,8 @@ function chipTone(value: number | null): string {
 
 export function OpsRoomControlPanel({
   clock,
+  timeRemainingSec,
+  totalTimeSec,
   runState,
   lastBeatId,
   runLogCount,
@@ -52,6 +56,9 @@ export function OpsRoomControlPanel({
   onStart,
   onEndNow,
 }: OpsRoomControlPanelProps) {
+  const timeProgress = Math.round((Math.max(0, timeRemainingSec) / Math.max(1, totalTimeSec)) * 100);
+  const beatProgress =
+    totalBeatCount > 0 ? Math.round((Math.max(0, appliedBeatCount) / Math.max(1, totalBeatCount)) * 100) : 0;
   const coachingPreview =
     !lastCoachingNote || lastCoachingNote.trim().length === 0
       ? "No coaching note yet."
@@ -121,6 +128,32 @@ export function OpsRoomControlPanel({
         <p className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-200 sm:col-span-4">
           Last Coaching Note: <span className="font-semibold">{coachingPreview}</span>
         </p>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-zinc-700 bg-zinc-800 p-2.5">
+          <div className="mb-1 flex items-center justify-between text-xs text-zinc-300">
+            <span>Clock Progress</span>
+            <span>{timeProgress}% remaining</span>
+          </div>
+          <div className="h-2 rounded bg-zinc-700">
+            <div
+              className={`h-2 rounded transition-all duration-500 ${
+                timeProgress > 35 ? "bg-cyan-500" : timeProgress > 15 ? "bg-amber-500" : "bg-rose-500"
+              }`}
+              style={{ width: `${timeProgress}%` }}
+            />
+          </div>
+        </div>
+        <div className="rounded-lg border border-zinc-700 bg-zinc-800 p-2.5">
+          <div className="mb-1 flex items-center justify-between text-xs text-zinc-300">
+            <span>Beat Progress</span>
+            <span>{beatProgress}% complete</span>
+          </div>
+          <div className="h-2 rounded bg-zinc-700">
+            <div className="h-2 rounded bg-emerald-500 transition-all duration-500" style={{ width: `${beatProgress}%` }} />
+          </div>
+        </div>
       </div>
 
       {runEnded ? (
