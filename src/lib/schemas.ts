@@ -187,6 +187,45 @@ export const ttsRequestSchema = z
   })
   .strict();
 
+export const reporterConversationTurnSchema = z
+  .object({
+    speaker: z.enum(["reporter", "player"]),
+    text: z.string().min(1).max(500),
+  })
+  .strict();
+
+export const reporterScenarioContextSchema = z
+  .object({
+    episodeId: z.string().min(1).optional(),
+    lastBeatId: z.string().min(1).optional(),
+    org: z.string().min(1).optional(),
+    role: z.string().min(1).optional(),
+    objective: z.string().min(1).optional(),
+    replyToTurnId: z.string().min(1).optional(),
+    replyToText: z.string().min(1).max(500).optional(),
+  })
+  .strict();
+
+export const reporterRespondRequestSchema = z
+  .object({
+    runId: z.string().min(1),
+    persona: z.string().min(1).max(120),
+    userResponse: z.string().min(1).max(220),
+    conversationHistory: z.array(reporterConversationTurnSchema).max(24),
+    scenarioContext: reporterScenarioContextSchema.optional(),
+  })
+  .strict();
+
+export const reporterRespondResponseSchema = z
+  .object({
+    reporterReply: z.string().min(1).max(600),
+    ttsText: z.string().min(1).max(600),
+    tone: z.enum(["neutral", "pressing", "skeptical", "closing"]),
+    shouldContinue: z.boolean(),
+    mode: z.enum(["mock", "live"]),
+  })
+  .strict();
+
 export const apiErrorSchema = z
   .object({
     error: z.string().min(1),
@@ -202,3 +241,6 @@ export type EvaluateEpisodeResponse = z.infer<typeof evaluateEpisodeResponseSche
 export type AfterActionRequest = z.infer<typeof afterActionRequestSchema>;
 export type AfterActionResponse = z.infer<typeof afterActionResponseSchema>;
 export type TtsRequest = z.infer<typeof ttsRequestSchema>;
+export type ReporterConversationTurn = z.infer<typeof reporterConversationTurnSchema>;
+export type ReporterRespondRequest = z.infer<typeof reporterRespondRequestSchema>;
+export type ReporterRespondResponse = z.infer<typeof reporterRespondResponseSchema>;

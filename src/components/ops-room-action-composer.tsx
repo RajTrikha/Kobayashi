@@ -37,15 +37,18 @@ export function OpsRoomActionComposer({
   onSubmit,
 }: OpsRoomActionComposerProps) {
   return (
-    <section className="rounded-2xl border border-zinc-700 bg-zinc-900/95 p-4">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-300">Action Composer</h2>
+    <section className="glass-panel p-4">
+      <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-zinc-400">Command Console</h2>
+      <p className="mt-1 mb-3 text-[11px] uppercase tracking-[0.12em] text-amber-300/90">
+        Your Decision Input · Not a chat window
+      </p>
 
       <div className="mb-3 grid gap-2 sm:grid-cols-2">
         <button
           type="button"
           onClick={() => onActionTextChange(ACTION_TEMPLATES.holdingStatement)}
           disabled={!hasEpisode || isSubmitting || isFinalizing || runEnded}
-          className="rounded-lg border border-cyan-700/70 bg-cyan-950/30 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-cyan-700/40 bg-cyan-950/20 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-cyan-300 transition hover:border-cyan-600/60 hover:bg-cyan-950/30 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Draft Holding Statement
         </button>
@@ -53,7 +56,7 @@ export function OpsRoomActionComposer({
           type="button"
           onClick={() => onActionTextChange(ACTION_TEMPLATES.dmReporter)}
           disabled={!hasEpisode || isSubmitting || isFinalizing || runEnded}
-          className="rounded-lg border border-sky-700/70 bg-sky-950/30 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-sky-700/40 bg-sky-950/20 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-sky-300 transition hover:border-sky-600/60 hover:bg-sky-950/30 disabled:cursor-not-allowed disabled:opacity-50"
         >
           DM Reporter
         </button>
@@ -61,7 +64,7 @@ export function OpsRoomActionComposer({
           type="button"
           onClick={() => onActionTextChange(ACTION_TEMPLATES.internalMemo)}
           disabled={!hasEpisode || isSubmitting || isFinalizing || runEnded}
-          className="rounded-lg border border-emerald-700/70 bg-emerald-950/30 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-emerald-700/40 bg-emerald-950/20 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-emerald-300 transition hover:border-emerald-600/60 hover:bg-emerald-950/30 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Internal Memo
         </button>
@@ -69,7 +72,7 @@ export function OpsRoomActionComposer({
           type="button"
           onClick={() => onActionTextChange(ACTION_TEMPLATES.escalate)}
           disabled={!hasEpisode || isSubmitting || isFinalizing || runEnded}
-          className="rounded-lg border border-amber-700/70 bg-amber-950/30 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-amber-700/40 bg-amber-950/20 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-amber-300 transition hover:border-amber-600/60 hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Escalate
         </button>
@@ -79,39 +82,40 @@ export function OpsRoomActionComposer({
         <textarea
           value={actionText}
           onChange={(event) => onActionTextChange(event.target.value.slice(0, 220))}
-          placeholder="Write your next response..."
-          className="h-28 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm outline-none ring-cyan-500/60 focus:ring-2"
+          placeholder="Write your next command decision (e.g., public statement direction, legal-safe escalation, support action)..."
+          className="h-28 w-full rounded-lg border border-zinc-700/50 bg-zinc-800/30 px-3 py-2 text-sm text-zinc-200 outline-none transition focus:border-cyan-600/60 focus:ring-2 focus:ring-cyan-500/30"
+          style={{ boxShadow: "inset 0 1px 4px rgba(0,0,0,0.3)" }}
           disabled={!hasEpisode || isSubmitting || isFinalizing || runEnded}
         />
         <div className="flex items-center justify-between gap-3">
-          <p className={`text-xs ${actionCharsLeft < 40 ? "text-amber-300" : "text-zinc-400"}`}>
-            {actionCharsLeft} characters left · Submit with Ctrl/Cmd + Enter
+          <p className={`text-xs ${actionCharsLeft < 40 ? "glow-text-amber text-amber-400" : "text-zinc-500"}`}>
+            {actionCharsLeft} characters left · Evaluated by simulator engine · Submit with Ctrl/Cmd + Enter
           </p>
           <button
             type="submit"
             disabled={!hasEpisode || isSubmitting || isFinalizing || actionText.trim().length === 0 || runEnded}
-            className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="glow-btn-cyan rounded-lg bg-cyan-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
           >
-            {isSubmitting ? "Submitting..." : "Submit Action"}
+            {isSubmitting ? "Submitting..." : "Submit Decision"}
           </button>
         </div>
       </form>
 
       {lastEvaluation ? (
-        <div className="mt-4 rounded-lg border border-zinc-700 bg-zinc-800/80 p-3 text-sm">
+        <div className="animate-fade-in-up mt-4 rounded-lg border border-l-2 border-zinc-700/40 border-l-cyan-500/60 bg-zinc-800/30 p-3 text-sm">
           <p>
-            <span className="font-semibold text-cyan-300">Score Delta:</span> {lastEvaluation.scoreDelta}
+            <span className="glow-text-cyan font-bold text-cyan-400">Score Delta:</span> {lastEvaluation.scoreDelta}
           </p>
           <p className="mt-1">
-            <span className="font-semibold text-cyan-300">State Delta:</span> sentiment {lastEvaluation.stateDelta.publicSentiment}, trust{" "}
+            <span className="glow-text-cyan font-bold text-cyan-400">State Delta:</span> sentiment {lastEvaluation.stateDelta.publicSentiment}, trust{" "}
             {lastEvaluation.stateDelta.trustScore}
           </p>
           <p className="mt-1">
-            <span className="font-semibold text-cyan-300">Coach:</span> {lastEvaluation.coachingNote}
+            <span className="glow-text-cyan font-bold text-cyan-400">Coach:</span> {lastEvaluation.coachingNote}
           </p>
           {lastEvaluation.suggestedNextAction ? (
             <p className="mt-1">
-              <span className="font-semibold text-cyan-300">Suggested Next:</span> {lastEvaluation.suggestedNextAction}
+              <span className="glow-text-cyan font-bold text-cyan-400">Suggested Next:</span> {lastEvaluation.suggestedNextAction}
             </p>
           ) : null}
         </div>

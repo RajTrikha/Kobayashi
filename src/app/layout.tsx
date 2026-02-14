@@ -27,7 +27,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <div className="kobayashi-grid" aria-hidden="true" />
+        <div className="relative z-10">
+          {children}
+        </div>
       </body>
     </html>
   );

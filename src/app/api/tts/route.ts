@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       })
     : null;
 
-  const mode = liveAudioBuffer ? "live" : "mock";
+  const isLive = !!liveAudioBuffer;
   const audioBuffer =
     liveAudioBuffer ??
     createMockTtsAudio({
@@ -33,13 +33,13 @@ export async function POST(request: Request) {
       persona,
     });
 
-  return new NextResponse(audioBuffer, {
+  return new NextResponse(audioBuffer as unknown as BodyInit, {
     status: 200,
     headers: {
-      "Content-Type": "audio/mpeg",
-      "Content-Length": `${audioBuffer.byteLength}`,
+      "Content-Type": isLive ? "audio/mpeg" : "audio/wav",
+      "Content-Length": `${audioBuffer.length}`,
       "Cache-Control": "no-store",
-      "X-Kobayashi-TTS-Mode": mode,
+      "X-Kobayashi-TTS-Mode": isLive ? "live" : "mock",
     },
   });
 }

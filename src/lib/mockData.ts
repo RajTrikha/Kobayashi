@@ -7,6 +7,8 @@ import type {
   EvaluateEpisodeResponse,
   GenerateEpisodeRequest,
   GenerateEpisodeResponse,
+  ReporterRespondRequest,
+  ReporterRespondResponse,
   RunState,
 } from "@/lib/schemas";
 
@@ -37,10 +39,10 @@ function legalRiskBySentiment(sentiment: number): "low" | "medium" | "high" {
 
 function velocityByDelta(delta: number): "falling" | "steady" | "rising" {
   if (delta >= 4) {
-    return "falling";
+    return "rising";
   }
   if (delta <= -4) {
-    return "rising";
+    return "falling";
   }
   return "steady";
 }
@@ -142,7 +144,7 @@ export function createMockEpisode(input: GenerateEpisodeRequest): GenerateEpisod
       },
       {
         id: "beat_003",
-        atSec: 210,
+        atSec: 180,
         feedItems: [
           {
             id: "feed_003",
@@ -158,6 +160,61 @@ export function createMockEpisode(input: GenerateEpisodeRequest): GenerateEpisod
             text: "Agents need approved language before next shift starts.",
             channel: "#support-ops",
             priority: "normal" as const,
+          },
+        ],
+      },
+      {
+        id: "beat_004",
+        atSec: 300,
+        feedItems: [
+          {
+            id: "feed_004",
+            source: "AviationInsider",
+            text: `Breaking: Second ${input.org} flight diverted mid-route. Passengers report conflicting information from crew.`,
+            tone: "critical" as const,
+          },
+          {
+            id: "feed_005",
+            source: "Social Pulse",
+            text: `#Boycott${input.org.replace(/\s/g, "")} trending nationally. Customer-shot video has 2.1M views and climbing.`,
+            tone: "critical" as const,
+          },
+        ],
+        internalMessages: [
+          {
+            id: "im_004",
+            from: "VP Operations",
+            text: "Board wants a briefing in 30 minutes. We need a one-page executive summary of our response so far.",
+            channel: "#incident-war-room",
+            priority: "high" as const,
+          },
+        ],
+      },
+      {
+        id: "beat_005",
+        atSec: 400,
+        feedItems: [
+          {
+            id: "feed_006",
+            source: "National Wire",
+            text: "FAA confirms it is reviewing operational data. Shares down 4% in after-hours trading.",
+            tone: "critical" as const,
+          },
+        ],
+        internalMessages: [
+          {
+            id: "im_005",
+            from: "Investor Relations",
+            text: "Analysts are asking if we'll issue a formal shareholder notice. Need guidance on messaging.",
+            channel: "#incident-war-room",
+            priority: "normal" as const,
+          },
+          {
+            id: "im_006",
+            from: "CEO Office",
+            text: "CEO wants to know: are we ahead of this or behind it? Give me one sentence.",
+            channel: "#incident-war-room",
+            priority: "high" as const,
           },
         ],
       },
@@ -302,27 +359,97 @@ export function evaluateMockAction(input: EvaluateEpisodeRequest): EvaluateEpiso
 
 export function createMockAfterAction(input: AfterActionRequest): AfterActionResponse {
   const actionCount = input.runLog.filter((entry) => entry.type === "action").length;
+  const beatCount = input.runLog.filter((entry) => entry.type === "beat").length;
+  const evalCount = input.runLog.filter((entry) => entry.type === "evaluation").length;
+
+  const sentiment = input.finalState.publicSentiment;
+  const trust = input.finalState.trustScore;
+  const readiness = input.finalState.readinessScore;
+  const risk = input.finalState.legalRisk;
+
+  const grade =
+    readiness >= 70 ? "A" : readiness >= 55 ? "B" : readiness >= 40 ? "C" : readiness >= 25 ? "D" : "F";
+  const gradeLabel =
+    readiness >= 70
+      ? "Strong — decisive action under pressure"
+      : readiness >= 55
+        ? "Solid — room to tighten timing and escalation"
+        : readiness >= 40
+          ? "Mixed — key windows were missed"
+          : "Needs Work — critical gaps in crisis response";
+
+  const wellPoints: string[] = [];
+  const missedPoints: string[] = [];
+
+  if (actionCount >= 3) {
+    wellPoints.push("Maintained a steady response cadence throughout the crisis window.");
+  }
+  if (sentiment >= 50) {
+    wellPoints.push("Public sentiment held above the critical threshold, indicating effective audience management.");
+  }
+  if (trust >= 50) {
+    wellPoints.push("Trust score remained stable, suggesting consistent and credible messaging.");
+  }
+  if (risk === "low") {
+    wellPoints.push("Legal exposure stayed contained — language discipline was strong.");
+  }
+
+  if (wellPoints.length === 0) {
+    wellPoints.push("Engaged with the crisis scenario and submitted responses under time pressure.");
+  }
+
+  if (actionCount < 2) {
+    missedPoints.push("Response volume was low. In a live crisis, silence is interpreted as avoidance.");
+  }
+  if (sentiment < 40) {
+    missedPoints.push("Public sentiment dropped significantly. Earlier acknowledgment could have slowed the decline.");
+  }
+  if (trust < 40) {
+    missedPoints.push("Trust eroded below recovery threshold. Concrete next-steps and transparency were needed sooner.");
+  }
+  if (risk === "high") {
+    missedPoints.push("Legal risk escalated to high. Unverified admissions or unclear language may have contributed.");
+  }
+
+  if (missedPoints.length === 0) {
+    missedPoints.push("Minor: Initial holding statement could include more specific customer support actions.");
+  }
 
   const aarMarkdown = [
     "# After-Action Report",
     "",
+    `**Overall Grade: ${grade}** — ${gradeLabel}`,
+    "",
     "## Timeline Snapshot",
-    `- Run ID: ${input.runId}`,
-    `- Total logged events: ${input.runLog.length}`,
-    `- Player actions submitted: ${actionCount}`,
+    `| Metric | Value |`,
+    `|--------|-------|`,
+    `| Run ID | ${input.runId} |`,
+    `| Total Events | ${input.runLog.length} |`,
+    `| Beats Triggered | ${beatCount} |`,
+    `| Actions Submitted | ${actionCount} |`,
+    `| Evaluations | ${evalCount} |`,
+    "",
+    "## Final State",
+    `| Metric | Value |`,
+    `|--------|-------|`,
+    `| Public Sentiment | ${sentiment}/100 |`,
+    `| Trust Score | ${trust}/100 |`,
+    `| Readiness Score | ${readiness}/100 |`,
+    `| Legal Risk | ${risk} |`,
+    `| News Velocity | ${input.finalState.newsVelocity} |`,
     "",
     "## What Went Well",
-    "- Response cadence stayed consistent through high-velocity updates.",
-    "- Messaging prioritized customer impact and operational next steps.",
+    ...wellPoints.map((point) => `- ${point}`),
     "",
     "## What Missed",
-    "- Initial statements could have included clearer ownership for follow-up.",
-    "- Internal alignment with support should occur earlier in the timeline.",
+    ...missedPoints.map((point) => `- ${point}`),
     "",
     "## Recommended Runbook",
-    "1. Publish a factual holding statement within first 90 seconds.",
-    "2. Stand up a support channel script before second media wave.",
-    "3. Escalate legal review in parallel with customer comms updates.",
+    "1. Publish a factual holding statement within the first 90 seconds of any crisis trigger.",
+    "2. Stand up a support channel script before the second media wave hits.",
+    "3. Escalate legal review in parallel with — not after — customer comms updates.",
+    "4. Align all internal teams on a single source-of-truth cadence (every 20 minutes).",
+    "5. Prepare a reporter response template that acknowledges concern without admitting cause.",
   ].join("\n");
 
   return {
@@ -330,24 +457,83 @@ export function createMockAfterAction(input: AfterActionRequest): AfterActionRes
     aarMarkdown,
     artifacts: {
       holding_statement:
-        "SkyWave Air is actively addressing today\'s disruption. We are prioritizing passenger support, verifying facts, and will share confirmed updates on a rolling basis.",
+        "SkyWave Air is actively addressing today's disruption. We are prioritizing passenger support, verifying all operational facts, and will share confirmed updates on a rolling basis. Affected passengers can reach our dedicated support line at 1-800-SKYWAVE for immediate rebooking and care assistance.",
       reporter_email:
-        "Subject: Statement on today\'s disruption\n\nHi Riley, we can confirm our teams are reviewing all operational data and customer reports. We will provide verified updates and support actions as they are confirmed.",
+        "Subject: SkyWave Air — Statement on Today's Service Disruption\n\nRiley,\n\nThank you for reaching out. We can confirm our operations and safety teams are conducting a thorough review of all relevant data and customer reports.\n\nWe are committed to transparency and will provide verified updates as they are confirmed. In the meantime, affected customers are being assisted through our dedicated support channels.\n\nWe will have a follow-up statement within the next two hours.\n\nBest,\nHead of Communications\nSkyWave Air",
       support_script:
-        "Thank you for contacting SkyWave Air. We understand the disruption has been stressful. We are actively resolving impacted itineraries and can assist with rebooking and care options now.",
+        "Thank you for contacting SkyWave Air. We understand today's disruption has been stressful, and we sincerely apologize for the inconvenience.\n\nHere's what we can do for you right now:\n• Rebooking: We can place you on the next available flight at no additional cost\n• Accommodation: If your flight is delayed overnight, we will arrange hotel and meal vouchers\n• Refund: Full refund requests can be processed immediately\n\nIs there a specific way I can help you today?",
       internal_memo:
-        "Comms, Legal, Ops, and Support will align on a single source-of-truth update every 20 minutes. No unverified root-cause language is approved for external use.",
+        "INTERNAL — DO NOT DISTRIBUTE EXTERNALLY\n\nEffective immediately, all external communications must be approved through the incident war room.\n\nKey protocols:\n1. Comms, Legal, Ops, and Support will sync every 20 minutes via #incident-war-room\n2. No root-cause language is approved for external use until verification is complete\n3. Customer-facing teams should use the approved support script only\n4. Media inquiries route to Head of Comms — no individual responses\n5. Next leadership briefing: [scheduled time]\n\nQuestions → #incident-war-room",
     },
     mode: "mock",
   };
 }
 
-export function createMockTtsAudio(payload: { text: string; voiceId: string; persona: string }): Buffer {
-  const prefix = Buffer.from([0x49, 0x44, 0x33]);
-  const body = Buffer.from(
-    `MOCK_TTS|voice=${payload.voiceId}|persona=${payload.persona}|text=${payload.text.slice(0, 180)}`,
-    "utf8",
-  );
+export function createMockTtsAudio(_payload: { text: string; voiceId: string; persona: string }): Buffer {
+  // Generate a valid WAV file with ~1 second of silence so browsers can play it
+  const sampleRate = 44100;
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const numSamples = sampleRate; // 1 second
+  const dataSize = numSamples * numChannels * (bitsPerSample / 8);
+  const buffer = Buffer.alloc(44 + dataSize); // 44-byte header + PCM data (zeros = silence)
 
-  return Buffer.concat([prefix, body]);
+  buffer.write("RIFF", 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write("WAVE", 8);
+  buffer.write("fmt ", 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20); // PCM format
+  buffer.writeUInt16LE(numChannels, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * numChannels * (bitsPerSample / 8), 28);
+  buffer.writeUInt16LE(numChannels * (bitsPerSample / 8), 32);
+  buffer.writeUInt16LE(bitsPerSample, 34);
+  buffer.write("data", 36);
+  buffer.writeUInt32LE(dataSize, 40);
+  // PCM data is all zeros (silence) from Buffer.alloc
+
+  return buffer;
+}
+
+export function createMockReporterReply(input: ReporterRespondRequest): ReporterRespondResponse {
+  const playerTurns = input.conversationHistory.filter((turn) => turn.speaker === "player").length;
+  const reporterName = input.persona.split(",")[0]?.trim() || "Reporter";
+  const mentionTimeline = /when|timeline|eta|hours|today|update/i.test(input.userResponse);
+  const mentionCustomers = /customer|passenger|support|hotline|refund/i.test(input.userResponse);
+
+  if (playerTurns <= 1) {
+    const reporterReply = mentionTimeline
+      ? "Can you give a concrete timestamp for your next verified update and confirm who signs off on it?"
+      : "Can you be specific about what your team is doing right now for affected passengers and when they should expect an update?";
+    return {
+      reporterReply,
+      ttsText: reporterReply,
+      tone: "pressing",
+      shouldContinue: true,
+      mode: "mock",
+    };
+  }
+
+  if (playerTurns === 2) {
+    const reporterReply = mentionCustomers
+      ? "Our sources say customers are still getting mixed answers. What single message should they rely on in the next hour?"
+      : "Our sources say internal teams are giving conflicting guidance. Who is the final decision-maker for public messaging right now?";
+    return {
+      reporterReply,
+      ttsText: reporterReply,
+      tone: "skeptical",
+      shouldContinue: true,
+      mode: "mock",
+    };
+  }
+
+  const reporterReply = `Thanks. I'll include your statement in our update, ${reporterName} signing off for now.`;
+  return {
+    reporterReply,
+    ttsText: reporterReply,
+    tone: "closing",
+    shouldContinue: false,
+    mode: "mock",
+  };
 }

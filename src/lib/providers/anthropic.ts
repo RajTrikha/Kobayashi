@@ -11,9 +11,11 @@ import {
   type EvaluateEpisodeResponse,
   type GenerateEpisodeRequest,
   type GenerateEpisodeResponse,
+  type ReporterRespondRequest,
+  type ReporterRespondResponse,
   type RunState,
 } from "@/lib/schemas";
-import { deriveReadinessScore } from "@/lib/mockData";
+import { createMockEpisode, deriveReadinessScore } from "@/lib/mockData";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -46,6 +48,59 @@ const afterActionOutputSchema = z
   })
   .strict();
 
+const reporterRespondOutputSchema = z
+  .object({
+    reporterReply: z.string().min(1).max(600),
+    ttsText: z.string().min(1).max(600).optional(),
+    tone: z.enum(["neutral", "pressing", "skeptical", "closing"]),
+    shouldContinue: z.boolean(),
+  })
+  .strict();
+
+const looseBeatSchema = z
+  .object({
+    id: z.string().optional(),
+    atSec: z.number().int().optional(),
+    timeElapsedSec: z.number().int().optional(),
+    type: z.string().optional(),
+    title: z.string().optional(),
+    triggerDescription: z.string().optional(),
+    inquiryFocus: z.string().optional(),
+    communicationStrategy: z.string().optional(),
+    stakeholderImpact: z.string().optional(),
+    actionItems: z.array(z.string()).optional(),
+    persona: z.string().optional(),
+  })
+  .passthrough();
+
+const looseEpisodeSchema = z
+  .object({
+    episodeId: z.string().optional(),
+    id: z.string().optional(),
+    title: z.string().optional(),
+    scenarioTitle: z.string().optional(),
+    role: z.string().optional(),
+    org: z.string().optional(),
+    orgName: z.string().optional(),
+    objective: z.string().optional(),
+    initialContext: z.string().optional(),
+    timeRemainingSec: z.number().int().optional(),
+    initialState: z
+      .object({
+        publicSentiment: z.number().optional(),
+        trustScore: z.number().optional(),
+        legalRisk: z.enum(["low", "medium", "high"]).optional(),
+        newsVelocity: z.enum(["falling", "steady", "rising"]).optional(),
+        timeRemainingSec: z.number().int().optional(),
+      })
+      .passthrough()
+      .optional(),
+    beats: z.array(looseBeatSchema).optional(),
+    scoringRubric: z.record(z.string(), z.number()).optional(),
+    constraints: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -68,6 +123,165 @@ function deriveNewsVelocity(sentimentDelta: number): "falling" | "steady" | "ris
     return "rising";
   }
   return "steady";
+}
+
+function toSentence(input: string): string {
+  const trimmed = input.replace(/\s+/g, " ").trim();
+  if (!trimmed) {
+    return "";
+  }
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+function firstString(values: Array<unknown>): string | null {
+  for (const value of values) {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed.length > 0) {
+        return trimmed;
+      }
+    }
+  }
+  return null;
+}
+
+function coerceGeneratedEpisode(
+  rawEpisode: unknown,
+  request: GenerateEpisodeRequest,
+): z.infer<typeof episodeSchema> | null {
+  const direct = episodeSchema.safeParse(rawEpisode);
+  if (direct.success) {
+    return direct.data;
+  }
+
+  const loose = looseEpisodeSchema.safeParse(rawEpisode);
+  if (!loose.success) {
+    return null;
+  }
+
+  const baseEpisode = createMockEpisode(request).episode;
+  const data = loose.data;
+  const looseBeats = data.beats ?? [];
+  const targetBeatCount = clamp(looseBeats.length || baseEpisode.beats.length, 3, 5);
+  const baseBeats = baseEpisode.beats.slice(0, targetBeatCount);
+
+  const rawInitialTime =
+    data.initialState?.timeRemainingSec ?? data.timeRemainingSec ?? baseEpisode.initialState.timeRemainingSec;
+  const initialTime = clamp(rawInitialTime, 180, 480);
+  const initialWithoutReadiness: Omit<RunState, "readinessScore"> = {
+    publicSentiment: clamp(
+      Math.round(data.initialState?.publicSentiment ?? baseEpisode.initialState.publicSentiment),
+      0,
+      100,
+    ),
+    trustScore: clamp(Math.round(data.initialState?.trustScore ?? baseEpisode.initialState.trustScore), 0, 100),
+    legalRisk: data.initialState?.legalRisk ?? baseEpisode.initialState.legalRisk,
+    newsVelocity: data.initialState?.newsVelocity ?? baseEpisode.initialState.newsVelocity,
+    timeRemainingSec: initialTime,
+  };
+
+  const normalizedBeats = baseBeats.map((baseBeat, index) => {
+    const looseBeat = looseBeats[index];
+    if (!looseBeat) {
+      return baseBeat;
+    }
+
+    const combinedNarrative = toSentence(
+      [
+        firstString([looseBeat.triggerDescription, looseBeat.title]),
+        firstString([looseBeat.stakeholderImpact, looseBeat.communicationStrategy]),
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+    const feedText = combinedNarrative || baseBeat.feedItems[0]?.text || `${request.org} faces mounting scrutiny.`;
+    const internalText = toSentence(
+      firstString([
+        looseBeat.communicationStrategy,
+        Array.isArray(looseBeat.actionItems) ? looseBeat.actionItems.join("; ") : null,
+        looseBeat.stakeholderImpact,
+      ]) ?? baseBeat.internalMessages[0]?.text ?? "Align legal and comms guidance before the next media cycle.",
+    );
+
+    const beatType = (looseBeat.type ?? "").toLowerCase();
+    const hasReporterIntent =
+      Boolean(looseBeat.persona) ||
+      Boolean(looseBeat.inquiryFocus) ||
+      /report|media|press|call/.test(beatType);
+    const reporterQuestion = toSentence(
+      firstString([looseBeat.inquiryFocus, looseBeat.triggerDescription, looseBeat.title]) ??
+        "Can you clarify what your team is doing right now for affected passengers?",
+    );
+    const callPersona = firstString([looseBeat.persona]) ?? "Riley Trent, Metro Ledger reporter";
+    const atSecCandidate = looseBeat.atSec ?? looseBeat.timeElapsedSec ?? baseBeat.atSec;
+
+    return {
+      ...baseBeat,
+      id: firstString([looseBeat.id]) ?? baseBeat.id,
+      atSec: clamp(Math.round(atSecCandidate), 15, Math.max(30, initialTime - 10)),
+      feedItems: [
+        {
+          ...baseBeat.feedItems[0],
+          id: `${firstString([looseBeat.id]) ?? baseBeat.id}_feed_01`,
+          source: hasReporterIntent ? "Metro Ledger" : baseBeat.feedItems[0]?.source ?? "Public Feed",
+          text: feedText,
+          tone: hasReporterIntent || /critical|alert|escalat/.test(beatType) ? "critical" : baseBeat.feedItems[0]?.tone ?? "concerned",
+        },
+      ],
+      internalMessages: [
+        {
+          ...baseBeat.internalMessages[0],
+          id: `${firstString([looseBeat.id]) ?? baseBeat.id}_im_01`,
+          text: internalText,
+        },
+      ],
+      call: hasReporterIntent
+        ? {
+            persona: callPersona,
+            transcript: reporterQuestion,
+            ttsText: reporterQuestion,
+          }
+        : baseBeat.call,
+    };
+  });
+
+  let previousAtSec = 0;
+  const stabilizedBeats = normalizedBeats.map((beat, index) => {
+    const maxForBeat = Math.max(30, initialTime - (targetBeatCount - index) * 10);
+    const atSec = clamp(Math.max(beat.atSec, previousAtSec + 20), 15, maxForBeat);
+    previousAtSec = atSec;
+    return {
+      ...beat,
+      atSec,
+    };
+  });
+
+  if (!stabilizedBeats.some((beat) => beat.call)) {
+    stabilizedBeats[Math.min(1, stabilizedBeats.length - 1)] = {
+      ...stabilizedBeats[Math.min(1, stabilizedBeats.length - 1)],
+      call: baseEpisode.beats[1]?.call ?? baseEpisode.beats[0]?.call,
+    };
+  }
+
+  const candidateEpisode: z.infer<typeof episodeSchema> = {
+    episodeId: firstString([data.episodeId, data.id]) ?? baseEpisode.episodeId,
+    title: firstString([data.title, data.scenarioTitle]) ?? baseEpisode.title,
+    role: request.role,
+    org: request.org,
+    objective:
+      firstString([data.objective, data.initialContext]) ??
+      baseEpisode.objective,
+    initialState: {
+      ...initialWithoutReadiness,
+      readinessScore: deriveReadinessScore(initialWithoutReadiness),
+    },
+    beats: stabilizedBeats,
+    scoringRubric: baseEpisode.scoringRubric,
+    constraints: baseEpisode.constraints,
+  };
+
+  const finalParse = episodeSchema.safeParse(candidateEpisode);
+  return finalParse.success ? finalParse.data : null;
 }
 
 function extractJsonBlock(raw: string): string {
@@ -146,10 +360,10 @@ async function callAnthropicForJson<T>(input: {
 export async function generateEpisodeLive(
   request: GenerateEpisodeRequest,
 ): Promise<GenerateEpisodeResponse | null> {
-  const outputSchema = z.object({ episode: episodeSchema }).strict();
+  const outputSchema = z.object({ episode: z.unknown() }).passthrough();
 
   const system =
-    "You design deterministic corporate crisis simulation episodes for judge demos. Keep company and media fictional and non-political.";
+    "You design deterministic corporate crisis simulation episodes for judge demos. Keep company and media fictional and non-political. You must return exactly the requested schema keys.";
 
   const prompt = [
     "Create one PR Meltdown episode JSON.",
@@ -162,7 +376,19 @@ export async function generateEpisodeLive(
     "- Include 3 to 5 beats and at least one reporter call beat",
     "- Keep values bounded to the schema ranges",
     "- Use fictional outlets/personas only",
-    "Return shape: { \"episode\": <episodeSchema object> }",
+    "Return shape exactly: {",
+    '  "episode": {',
+    '    "episodeId": "string",',
+    '    "title": "string",',
+    '    "role": "string",',
+    '    "org": "string",',
+    '    "objective": "string",',
+    '    "initialState": { "publicSentiment": 0-100, "trustScore": 0-100, "legalRisk": "low|medium|high", "newsVelocity": "falling|steady|rising", "timeRemainingSec": 480, "readinessScore": 0-100 },',
+    '    "beats": [{ "id":"string","atSec":number,"feedItems":[{"id":"string","source":"string","text":"string","tone":"neutral|concerned|critical"}],"internalMessages":[{"id":"string","from":"string","text":"string","channel":"string","priority":"low|normal|high"}],"call":{"transcript":"string","ttsText":"string","persona":"string"}? }],',
+    '    "scoringRubric": { "acknowledgment": 0-1, "clarity": 0-1, "actionability": 0-1, "escalation": 0-1, "legalSafety": 0-1, "empathy": 0-1 },',
+    '    "constraints": [{ "id":"string","title":"string","description":"string" }]',
+    "  }",
+    "}",
   ].join("\n");
 
   try {
@@ -171,16 +397,20 @@ export async function generateEpisodeLive(
       prompt,
       schema: outputSchema,
     });
+    const normalizedEpisode = coerceGeneratedEpisode(parsed.episode, request);
+    if (!normalizedEpisode) {
+      throw new Error("Anthropic episode could not be normalized to schema.");
+    }
 
     return {
       runId: `run_${nanoid(10)}`,
-      episodeId: parsed.episode.episodeId,
+      episodeId: normalizedEpisode.episodeId,
       episode: {
-        ...parsed.episode,
+        ...normalizedEpisode,
         role: request.role,
         org: request.org,
       },
-      runState: parsed.episode.initialState,
+      runState: normalizedEpisode.initialState,
       startedAt: new Date().toISOString(),
       mode: "live",
     };
@@ -305,6 +535,71 @@ export async function createAfterActionLive(
     };
   } catch (error) {
     console.warn("[createAfterActionLive] fallback to mock:", error);
+    return null;
+  }
+}
+
+export async function reporterRespondLive(
+  request: ReporterRespondRequest,
+): Promise<ReporterRespondResponse | null> {
+  const playerTurns = request.conversationHistory.filter((turn) => turn.speaker === "player").length;
+  const forceWrapUp = playerTurns >= 3;
+  const forceContinue = playerTurns < 2;
+
+  const system = [
+    "You are role-playing a fictional journalist in a corporate crisis simulation.",
+    "Stay in-character as the provided reporter persona.",
+    "Use one concise follow-up question per turn.",
+    "Keep pressure realistic but avoid defamation and avoid real people/politicians.",
+    "The call should end naturally in 2-3 reporter responses total.",
+  ].join(" ");
+
+  const historyText =
+    request.conversationHistory
+      .map((turn, index) => `${index + 1}. ${turn.speaker.toUpperCase()}: ${turn.text}`)
+      .join("\n") || "(empty)";
+
+  const prompt = [
+    "Generate the reporter's next reply as JSON.",
+    `runId: ${request.runId}`,
+    `persona: ${request.persona}`,
+    `latestUserResponse: ${request.userResponse}`,
+    `scenarioContext: ${JSON.stringify(request.scenarioContext ?? {})}`,
+    `conversationHistory:\n${historyText}`,
+    `playerTurnsSoFar: ${playerTurns}`,
+    `mustEndNow: ${forceWrapUp}`,
+    `mustContinueNow: ${forceContinue}`,
+    "Output fields:",
+    '- reporterReply: what the reporter says in transcript form (1-2 short sentences).',
+    "- ttsText: speech-optimized version of reporterReply.",
+    "- tone: one of neutral|pressing|skeptical|closing.",
+    "- shouldContinue: boolean.",
+    "Rules:",
+    "- If mustEndNow=true then tone must be closing and shouldContinue=false.",
+    "- If mustContinueNow=true then shouldContinue=true.",
+    "- Keep under 320 characters for reporterReply.",
+    "- Never include markdown or speaker labels in reply text.",
+  ].join("\n");
+
+  try {
+    const parsed = await callAnthropicForJson({
+      system,
+      prompt,
+      schema: reporterRespondOutputSchema,
+    });
+
+    const shouldContinue = forceWrapUp ? false : forceContinue ? true : parsed.shouldContinue;
+    const tone = shouldContinue ? parsed.tone : "closing";
+
+    return {
+      reporterReply: parsed.reporterReply,
+      ttsText: parsed.ttsText ?? parsed.reporterReply,
+      tone,
+      shouldContinue,
+      mode: "live",
+    };
+  } catch (error) {
+    console.warn("[reporterRespondLive] fallback to mock:", error);
     return null;
   }
 }
